@@ -21,28 +21,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val hello = MainActivityHello()
         enableEdgeToEdge()
         setContent {
             SwiftAndroidTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
-                        name = hello.sayHelloName(),
+                        name = "Android",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
             }
         }
     }
-}
-
-class MainActivityHello {
-
-    init {
-        NativeLibrary.shared()
-    }
-
-    external fun sayHelloName(): String
 }
 
 @Composable
@@ -57,6 +47,6 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 @Composable
 fun GreetingPreview() {
     SwiftAndroidTheme {
-        Greeting(MainActivityHello().sayHelloName())
+        Greeting("Android")
     }
 }

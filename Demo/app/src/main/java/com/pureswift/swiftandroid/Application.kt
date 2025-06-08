@@ -1,7 +1,5 @@
 package com.pureswift.swiftandroid
 
-import com.example.swift.HelloSubclass
-
 class Application: android.app.Application() {
 
     init {
@@ -21,9 +19,4 @@ class Application: android.app.Application() {
     }
 
     private external fun onTerminateSwift()
-
-    fun sayHello() {
-        val result = HelloSubclass("Swift").sayHello(17, 25)
-        println("sayHello(17, 25) = $result")
-    }
 }

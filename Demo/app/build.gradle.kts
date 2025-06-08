@@ -9,7 +9,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.pureswift.swiftandroid"
+        applicationId = "com.pureswift.swiftandroidui"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
