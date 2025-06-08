@@ -19,13 +19,13 @@ extension Application {
     
     @JavaMethod
     func onCreateSwift() {
-        print("\(#function)")
+        log("\(self).\(#function)")
         Application.shared = self
     }
     
     @JavaMethod
     func onTerminateSwift() {
-        print("\(#function)")
+        log("\(self).\(#function)")
         Application.shared = nil
     }
 }
@@ -34,7 +34,7 @@ extension Application {
     
     static var logTag: String { "Application" }
     
-    func print(_ string: String) {
+    func log(_ string: String) {
         let log = try! JavaClass<AndroidUtil.Log>()
         _ = log.v(Self.logTag, string)
     }

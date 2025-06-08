@@ -1,5 +1,5 @@
-#if canImport(SwiftAndroidUI)
-import SwiftAndroidUI
+#if canImport(AndroidSwiftUI)
+import AndroidSwiftUI
 #else
 import SwiftUI
 #endif
@@ -9,29 +9,21 @@ struct ContentView: View {
         NavigationView {
             VStack(spacing: 20) {
                 VStack {
-                    Image(systemName: "globe")
-                        .imageScale(.large)
-                        .foregroundColor(.accentColor)
+                    Image("globe")
                     Text("Hello, world!")
                 }
                 VStack {
                     HStack {
-                        Image(systemName: "heart.fill")
-                            .imageScale(.small)
-                            .foregroundColor(.red)
+                        Image("heart.fill")
                         Text("Small")
                     }
                     HStack {
-                        Image(systemName: "heart.fill")
-                            .imageScale(.medium)
-                            .foregroundColor(.red)
+                        Image("heart.fill")
                         Text("Medium")
                     }
            
                     HStack {
-                        Image(systemName: "heart.fill")
-                            .imageScale(.large)
-                            .foregroundColor(.red)
+                        Image("heart.fill")
                         Text("Large")
                    }
                 }

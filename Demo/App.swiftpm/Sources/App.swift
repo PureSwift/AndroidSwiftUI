@@ -1,5 +1,5 @@
-#if canImport(SwiftAndroidUI)
-import SwiftAndroidUI
+#if canImport(AndroidSwiftUI)
+import AndroidSwiftUI
 #else
 import SwiftUI
 #endif
