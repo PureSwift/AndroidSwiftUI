@@ -14,10 +14,10 @@ cp -rf $SWIFT_PACKAGE_SRC/.build/$SWIFT_TARGET_NAME/debug/libSwiftAndroidApp.so 
     $SRC_ROOT/app/src/main/jniLibs/$ANDROID_ARCH/
 
 # Build locally for preview
-xcrun --toolchain swift swift build -c $SWIFT_COMPILATION_MODE \
-    --package-path $SWIFT_PACKAGE_SRC
+#xcrun --toolchain swift swift build -c $SWIFT_COMPILATION_MODE \
+#    --package-path $SWIFT_PACKAGE_SRC
 
 # Copy to default Java JNI path
-mkdir -p ~/Library/Java/Extensions
-cp -rf $SWIFT_PACKAGE_SRC/.build/arm64-apple-macosx/debug/libSwiftAndroidApp.dylib \
-    ~/Library/Java/Extensions/
+#mkdir -p ~/Library/Java/Extensions
+#cp -rf $SWIFT_PACKAGE_SRC/.build/arm64-apple-macosx/debug/libSwiftAndroidApp.dylib \
+#    ~/Library/Java/Extensions/
