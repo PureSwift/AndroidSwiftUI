@@ -56,8 +56,8 @@ let package = Package(
             branch: "feature/javakit"
         ),
         .package(
-          url: "https://github.com/OpenCombine/OpenCombine.git",
-          from: "0.12.0"
+          url: "https://github.com/PureSwift/OpenCombine.git",
+          branch: "feature/android"
         )
     ],
     targets: [
