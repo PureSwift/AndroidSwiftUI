@@ -93,3 +93,13 @@ public extension View {
     modifier(_EnvironmentValuesWritingModifier(environmentValues: values))
   }
 }
+
+internal extension EnvironmentValues {
+    
+    /// Returns default settings for the environment
+    static var defaultEnvironment: Self {
+        var environment = EnvironmentValues()
+        environment[_ColorSchemeKey.self] = .light
+        return environment
+    }
+}
