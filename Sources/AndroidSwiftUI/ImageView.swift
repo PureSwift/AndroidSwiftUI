@@ -10,7 +10,7 @@ import AndroidKit
 extension Image: AnyAndroidView {
     
     func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
-        createView(context: context)
+        createImageView(context: context)
     }
     
     func updateAndroidView(_ view: AndroidView.View) {
@@ -18,7 +18,7 @@ extension Image: AnyAndroidView {
             assertionFailure()
             return
         }
-        updateView(imageView)
+        updateImageView(imageView)
     }
     
     func removeAndroidView() {
@@ -28,13 +28,13 @@ extension Image: AnyAndroidView {
 
 extension Image {
     
-    func createView(context: AndroidContent.Context) -> ImageView {
+    func createImageView(context: AndroidContent.Context) -> ImageView {
         let view = ImageView(context)
-        updateView(view)
+        updateImageView(view)
         return view
     }
     
-    func updateView(_ view: ImageView) {
+    func updateImageView(_ view: ImageView) {
         let proxy = _ImageProxy(self)
         let image = proxy.provider.resolve(in: proxy.environment)
         guard case let .named(imageName, _) = image.storage else {

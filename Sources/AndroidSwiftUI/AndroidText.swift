@@ -10,7 +10,7 @@ import AndroidKit
 extension Text: AnyAndroidView {
     
     func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
-        createView(context: context)
+        createTextView(context: context)
     }
     
     func updateAndroidView(_ view: AndroidView.View) {
@@ -18,7 +18,7 @@ extension Text: AnyAndroidView {
             assertionFailure()
             return
         }
-        updateView(textView)
+        updateTextView(textView)
     }
     
     func removeAndroidView() {
@@ -28,13 +28,13 @@ extension Text: AnyAndroidView {
 
 extension Text {
     
-    func createView(context: AndroidContent.Context) -> TextView {
+    func createTextView(context: AndroidContent.Context) -> TextView {
         let view = TextView(context)
-        updateView(view)
+        updateTextView(view)
         return view
     }
     
-    func updateView(_ view: TextView) {
+    func updateTextView(_ view: TextView) {
         let proxy = _TextProxy(self)
         // set text
         let rawText = proxy.rawText
