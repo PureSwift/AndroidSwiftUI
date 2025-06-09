@@ -7,8 +7,55 @@
 
 import AndroidKit
 
-extension _PrimitiveButtonStyleBody {
+extension Button: AnyAndroidView {
     
+    public func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
+        if let text = label as? Text {
+            let button = AndroidButton(
+                label: text,
+                action: action
+            )
+            return button.createAndroidView(context)
+        } else if let image = label as? Image {
+            let button = AndroidImageButton(
+                label: image,
+                action: action
+            )
+            return button.createAndroidView(context)
+        } else {
+            let button = AndroidButton(
+                label: Text("Button"),
+                action: action
+            )
+            return button.createAndroidView(context)
+        }
+    }
+    
+    public func updateAndroidView(_ view: AndroidView.View) {
+        if let text = label as? Text {
+            let button = AndroidButton(
+                label: text,
+                action: action
+            )
+            button.updateAndroidView(view)
+        } else if let image = label as? Image {
+            let button = AndroidImageButton(
+                label: image,
+                action: action
+            )
+            button.updateAndroidView(view)
+        } else {
+            let button = AndroidButton(
+                label: Text("Button"),
+                action: action
+            )
+            button.updateAndroidView(view)
+        }
+    }
+    
+    public func removeAndroidView() {
+        
+    }
     
 }
 
