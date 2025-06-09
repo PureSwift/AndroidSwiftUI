@@ -37,7 +37,7 @@ extension Image {
             assertionFailure()
             return
         }
-        guard let resource = ImageCache.shared.load(imageName) else {
+        guard let resource = ImageCache.shared.load(imageName, context: view.getContext()) else {
             return
         }
         // set the image on the view
@@ -51,11 +51,10 @@ final class ImageCache {
     
     private init() { }
     
-    let resources = Resources()
         
     private(set) var images: [String: Int32] = [:]
     
-    func load(_ imageName: String) -> Int32? {
+    func load(_ imageName: String, context: AndroidContent.Context) -> Int32? {
         log("\(self).\(#function) load '\(imageName)'")
         // return cached resource ID
         if let resource = images[imageName] {
@@ -64,7 +63,7 @@ final class ImageCache {
         }
         // try to get resource
         
-        guard let resource = identifier(for: imageName) else {
+        guard let resource = Image.identifier(for: imageName, in: context) else {
             log("\(self).\(#function) Resource not found for '\(imageName)'")
             return nil
         }
@@ -73,9 +72,18 @@ final class ImageCache {
         images[imageName] = resource
         return resource
     }
+}
+
+internal extension Image {
     
-    private func identifier(for name: String) -> Int32? {
-        let resource = resources.getIdentifier(name, "drawable", "com.pureswift.swiftandroid")
+    static func identifier(
+        for name: String,
+        in context: AndroidContent.Context
+    ) -> Int32? {
+        let packageName = context.getPackageName()
+        let resource = context
+            .getResources()
+            .getIdentifier(name, "drawable", packageName)
         guard resource != 0 else {
             return nil
         }
