@@ -7,34 +7,29 @@
 
 import JavaKit
 import AndroidKit
+import Dispatch
 
 final class AndroidRenderer: Renderer {
-    
-    typealias TargetType = AndroidTarget
-    
+        
     let configuration: _AppConfiguration
     
-    private(set) var reconciler: StackReconciler<AndroidRenderer>
+    private(set) var reconciler: StackReconciler<AndroidRenderer>!
     
     static var shared: AndroidRenderer!
     
     init(app: any App, configuration: _AppConfiguration) {
         self.configuration = configuration
-        /*
         self.reconciler = StackReconciler(
             app: app,
             target: AndroidTarget.application,
             environment: .defaultEnvironment, // merge environment with scene environment
-            renderer: self,
+            renderer: self, // FIXME: Always retained
             scheduler: { next in
-                Task(operation: .userInitiated) {
-                    await MainActor.run {
-                        next()
-                    }
+                DispatchQueue.main.async {
+                    next()
                 }
             }
-        )*/
-        fatalError()
+        )
     }
     
     /** Function called by a reconciler when a new target instance should be
@@ -49,7 +44,29 @@ final class AndroidRenderer: Renderer {
       to parent: AndroidTarget,
       with host: MountedHost
     ) -> TargetType? {
-        return nil
+        if let anyView = mapAnyView( host.view, transform: { (component: AnyAndroidView) in component }) {
+            switch parent.storage {
+            case .application:
+                // root view, add to main activity
+                let viewObject = anyView.createAndroidView()
+                return AndroidTarget(host.view, viewObject)
+            case .view(let parentView):
+                // subview add to parent
+                guard parentView.is(ViewGroup.self) else {
+                    return nil
+                }
+                let viewObject = anyView.createAndroidView()
+                return AndroidTarget(host.view, viewObject)
+            }
+        } else {
+            
+            // handle cases like `TupleView`
+            if mapAnyView(host.view, transform: { (view: ParentView) in view }) != nil {
+                return parent
+            }
+            
+            return nil
+        }
     }
     
     /** Function called by a reconciler when an existing target instance should be
