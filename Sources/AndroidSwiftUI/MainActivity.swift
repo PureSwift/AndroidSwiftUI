@@ -5,7 +5,9 @@
 //  Created by Alsey Coleman Miller on 6/8/25.
 //
 
+import Foundation
 import AndroidKit
+import AndroidJavaLang
 
 @JavaClass("com.pureswift.swiftandroid.MainActivity")
 open class MainActivity: AndroidApp.Activity {
@@ -26,6 +28,29 @@ extension MainActivity {
         
         // start app
         AndroidSwiftUIMain()
+        
+        // drain main queue
+        //drainMainQueue()
+    }
+}
+
+private extension MainActivity {
+    
+    nonisolated func drainMainQueue() {
+        log("\(self).\(#function)")
+        // drain main queue
+        Task { [weak self] in
+            while let self = self {
+                log("\(self).\(#function) Task Started")
+                if #available(macOS 13.0, *) {
+                    try? await Task.sleep(for: .milliseconds(100))
+                }
+                let runnable = AndroidSwiftUI.Runnable {
+                    RunLoop.main.run(until: Date() + 0.01)
+                }
+                self.runOnUiThread(runnable.as(AndroidJavaLang.Runnable.self))
+            }
+        }
     }
 }
 
