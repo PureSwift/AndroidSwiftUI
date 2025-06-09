@@ -34,7 +34,7 @@ extension Text {
         let proxy = _TextProxy(self)
         // set text
         let rawText = proxy.rawText
-        view.setText(JavaString(rawText).as(CharSequence.self))
+        view.text = rawText
         // collect modifiers
         var color = Color.primary
         for modifier in proxy.modifiers {
@@ -78,5 +78,14 @@ internal extension TextView {
     ) {
         let bitmask = color.argbBitMask(in: environment)
         setTextColor(Int32(bitPattern: bitmask))
+    }
+    
+    var text: String {
+        get {
+            getText().toString()
+        }
+        set {
+            setText(JavaString(newValue).as(CharSequence.self))
+        }
     }
 }
