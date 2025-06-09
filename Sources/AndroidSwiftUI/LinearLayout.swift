@@ -34,8 +34,12 @@ extension VStack: AnyAndroidView {
         createView(context: context)
     }
     
-    func updateAndroidView() {
-        
+    func updateAndroidView(_ view: AndroidView.View) {
+        guard let linearLayout = view.as(LinearLayout.self) else {
+            assertionFailure()
+            return
+        }
+        updateView(linearLayout)
     }
     
     func removeAndroidView() {
@@ -57,9 +61,13 @@ extension HStack: AnyAndroidView {
     func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
         createView(context: context)
     }
-    
-    func updateAndroidView() {
-        
+
+    func updateAndroidView(_ view: AndroidView.View) {
+        guard let linearLayout = view.as(LinearLayout.self) else {
+            assertionFailure()
+            return
+        }
+        updateView(linearLayout)
     }
     
     func removeAndroidView() {

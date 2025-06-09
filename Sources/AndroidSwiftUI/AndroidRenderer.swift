@@ -93,11 +93,17 @@ final class AndroidRenderer: Renderer {
       target: AndroidTarget,
       with host: MountedHost
     ) {
-        log("\(self).\(#function)")
+        log("\(self).\(#function) \(host.view.typeConstructorName)")
         guard let widget = mapAnyView(host.view, transform: { (widget: AnyAndroidView) in widget })
             else { return }
-
-        //widget.update(target.javaObject)
+        
+        switch target.storage {
+        case .application:
+            break
+        case .view(let view):
+            log("\(self).\(#function) Update \(view.getClass().getName())")
+            widget.updateAndroidView(view)
+        }
     }
 
     /** Function called by a reconciler when an existing target instance should be

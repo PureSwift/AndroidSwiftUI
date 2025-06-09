@@ -13,8 +13,12 @@ extension Text: AnyAndroidView {
         createView(context: context)
     }
     
-    func updateAndroidView() {
-        
+    func updateAndroidView(_ view: AndroidView.View) {
+        guard let textView = view.as(TextView.self) else {
+            assertionFailure()
+            return
+        }
+        updateView(textView)
     }
     
     func removeAndroidView() {

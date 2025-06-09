@@ -11,7 +11,7 @@ internal protocol AnyAndroidView {
     
     func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View
     
-    func updateAndroidView()
+    func updateAndroidView(_ view: AndroidView.View)
     
     func removeAndroidView()
 }
