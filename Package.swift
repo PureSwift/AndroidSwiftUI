@@ -53,7 +53,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/PureSwift/Android.git",
-            branch: "feature/javakit"
+            branch: "master"
         ),
         .package(
           url: "https://github.com/PureSwift/OpenCombine.git",
