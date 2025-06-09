@@ -10,16 +10,22 @@ import AndroidKit
 @JavaClass("com.pureswift.swiftandroid.MainActivity")
 open class MainActivity: AndroidApp.Activity {
     
-    static var shared: MainActivity!
+    final static var shared: MainActivity!
+    
+    @JavaMethod
+    open func setRootView(_ view: AndroidView.View)
 }
 
 @JavaImplementation("com.pureswift.swiftandroid.MainActivity")
 extension MainActivity {
     
     @JavaMethod
-    open func onCreateSwift(_ savedInstanceState: BaseBundle?) {
-        log("\(#function)")
+    public func onCreateSwift(_ savedInstanceState: BaseBundle?) {
+        log("\(self).\(#function)")
         MainActivity.shared = self
+        
+        // start app
+        AndroidSwiftUIMain()
     }
 }
 
