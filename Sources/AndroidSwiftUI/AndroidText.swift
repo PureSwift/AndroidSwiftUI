@@ -25,7 +25,7 @@ extension Text: AnyAndroidView {
 extension Text {
     
     func createView(context: AndroidContent.Context) -> TextView {
-        let view = TextView()
+        let view = TextView(context)
         updateView(view)
         return view
     }
@@ -77,6 +77,6 @@ internal extension TextView {
         in environment: EnvironmentValues = .defaultEnvironment
     ) {
         let bitmask = color.argbBitMask(in: environment)
-        setTextColor(Int32(bitmask))
+        setTextColor(Int32(bitPattern: bitmask))
     }
 }
