@@ -51,43 +51,34 @@ final class ImageCache {
     
     private init() { }
     
-        
-    private(set) var images: [String: Int32] = [:]
+    private(set) var imageResources: [String: ResourceID] = [:]
     
-    func load(_ imageName: String, context: AndroidContent.Context) -> Int32? {
+    func load(_ imageName: String, context: AndroidContent.Context) -> ResourceID? {
         log("\(self).\(#function) load '\(imageName)'")
         // return cached resource ID
-        if let resource = images[imageName] {
+        if let resource = imageResources[imageName] {
             log("\(self).\(#function) Return cached resource ID \(resource) for '\(imageName)'")
             return resource
         }
         // try to get resource
-        
-        guard let resource = Image.identifier(for: imageName, in: context) else {
+        guard let resource = ResourceID.drawable(imageName, in: context) else {
             log("\(self).\(#function) Resource not found for '\(imageName)'")
             return nil
         }
         log("\(self).\(#function) Found resource ID \(resource) for '\(imageName)'")
         // cache value
-        images[imageName] = resource
+        imageResources[imageName] = resource
         return resource
     }
 }
 
-internal extension Image {
+internal extension ResourceID {
     
-    static func identifier(
-        for name: String,
+    static func drawable(
+        _ name: String,
         in context: AndroidContent.Context
-    ) -> Int32? {
-        let packageName = context.getPackageName()
-        let resource = context
-            .getResources()
-            .getIdentifier(name, "drawable", packageName)
-        guard resource != 0 else {
-            return nil
-        }
-        return resource
+    ) -> ResourceID? {
+        ResourceID(name: name, type: "drawable", in: context)
     }
 }
 
