@@ -11,7 +11,7 @@ import AndroidKit
 final class AndroidTarget: Target {
     
     enum Storage {
-        case application(AndroidSwiftUI.Application)
+        case application
         case view(AndroidView.View)
     }
     
@@ -19,14 +19,18 @@ final class AndroidTarget: Target {
     
     var view: AnyView
     
+    private init<V: View>(_ view: V, _ storage: Storage) {
+        self.view = AnyView(view)
+        self.storage = storage
+    }
+    
     init<V: View>(_ view: V, _ object: AndroidView.View) {
         self.storage = .view(object)
         self.view = AnyView(view)
     }
     
-    init(_ app: AndroidSwiftUI.Application) {
-        self.storage = .application(app)
-        self.view = AnyView(EmptyView())
+    static var application: AndroidTarget {
+        .init(EmptyView(), .application)
     }
 }
 
@@ -35,8 +39,8 @@ extension AndroidTarget {
     
     var javaObject: JavaObject {
         switch storage {
-        case let .application(application):
-            return application
+        case .application:
+            return Application.shared
         case let .view(view):
             return view
         }
