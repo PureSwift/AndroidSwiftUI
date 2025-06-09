@@ -9,11 +9,11 @@ import AndroidKit
 
 extension Text: AnyAndroidView {
     
-    func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
+    public func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
         createTextView(context: context)
     }
     
-    func updateAndroidView(_ view: AndroidView.View) {
+    public func updateAndroidView(_ view: AndroidView.View) {
         guard let textView = view.as(TextView.self) else {
             assertionFailure()
             return
@@ -21,7 +21,7 @@ extension Text: AnyAndroidView {
         updateTextView(textView)
     }
     
-    func removeAndroidView() {
+    public func removeAndroidView() {
         
     }
 }

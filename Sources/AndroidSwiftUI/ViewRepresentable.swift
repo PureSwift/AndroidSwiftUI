@@ -59,3 +59,12 @@ extension AndroidViewRepresentable where Self: AnyAndroidView {
         
     }
 }
+
+public protocol AnyAndroidView: _PrimitiveView {
+    
+    func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View
+    
+    func updateAndroidView(_ view: AndroidView.View)
+    
+    func removeAndroidView()
+}

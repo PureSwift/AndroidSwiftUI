@@ -9,11 +9,11 @@ import AndroidKit
 
 extension Image: AnyAndroidView {
     
-    func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
+    public func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
         createImageView(context: context)
     }
     
-    func updateAndroidView(_ view: AndroidView.View) {
+    public func updateAndroidView(_ view: AndroidView.View) {
         guard let imageView = view.as(ImageView.self) else {
             assertionFailure()
             return
@@ -21,7 +21,7 @@ extension Image: AnyAndroidView {
         updateImageView(imageView)
     }
     
-    func removeAndroidView() {
+    public func removeAndroidView() {
         
     }
 }

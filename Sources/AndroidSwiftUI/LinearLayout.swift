@@ -30,11 +30,11 @@ extension LinearLayoutView {
 
 extension VStack: AnyAndroidView {
     
-    func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
+    public func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
         createView(context: context)
     }
     
-    func updateAndroidView(_ view: AndroidView.View) {
+    public func updateAndroidView(_ view: AndroidView.View) {
         guard let linearLayout = view.as(LinearLayout.self) else {
             assertionFailure()
             return
@@ -42,7 +42,7 @@ extension VStack: AnyAndroidView {
         updateView(linearLayout)
     }
     
-    func removeAndroidView() {
+    public func removeAndroidView() {
         
     }
 }
@@ -58,11 +58,11 @@ extension VStack: LinearLayoutView {
 
 extension HStack: AnyAndroidView {
     
-    func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
+    public func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
         createView(context: context)
     }
 
-    func updateAndroidView(_ view: AndroidView.View) {
+    public func updateAndroidView(_ view: AndroidView.View) {
         guard let linearLayout = view.as(LinearLayout.self) else {
             assertionFailure()
             return
@@ -70,7 +70,7 @@ extension HStack: AnyAndroidView {
         updateView(linearLayout)
     }
     
-    func removeAndroidView() {
+    public func removeAndroidView() {
         
     }
 }
