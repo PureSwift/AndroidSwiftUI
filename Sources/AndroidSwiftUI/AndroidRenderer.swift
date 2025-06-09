@@ -45,7 +45,7 @@ final class AndroidRenderer: Renderer {
       to parent: AndroidTarget,
       with host: MountedHost
     ) -> TargetType? {
-        log("\(self).\(#function) \(host.view.typeConstructorName)")
+        log("\(self).\(#function) Host \(host.view.typeConstructorName) Parent \(parent.storage)")
         guard let activity = MainActivity.shared else {
             fatalError("MainActivity.shared != nil")
         }
@@ -63,7 +63,7 @@ final class AndroidRenderer: Renderer {
                 // subview add to parent
                 log("\(self).\(#function) \(#line)")
                 guard parentView.is(ViewGroup.self), let viewGroup = parentView.as(ViewGroup.self) else {
-                    log("\(self).\(#function) \(#line)")
+                    log("\(self).\(#function) \(#line) Parent View \(parentView.getClass().getName()) is not a ViewGroup)")
                     return nil
                 }
                 let viewObject = anyView.createAndroidView(context)
