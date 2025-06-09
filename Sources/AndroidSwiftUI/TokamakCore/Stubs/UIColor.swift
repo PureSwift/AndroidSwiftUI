@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import struct Foundation.CGFloat
+
 public struct UIColor {
   let color: Color
 
@@ -26,4 +28,36 @@ public struct UIColor {
   public static let yellow: Self = .init(color: .yellow)
   public static let pink: Self = .init(color: .pink)
   public static let purple: Self = .init(color: .purple)
+}
+
+public extension UIColor {
+    
+    /// Returns the components that form the color in the RGB color space.
+    func getRed(
+        _ red: inout CGFloat,
+        green: inout CGFloat,
+        blue: inout CGFloat,
+        alpha: inout CGFloat
+    ) -> Bool {
+        return color.getRed(&red, green: &green, blue: &blue, alpha: &alpha, in: .defaultEnvironment)
+    }
+}
+
+internal extension Color {
+    
+    /// Returns the components that form the color in the RGB color space.
+    func getRed(
+        _ red: inout CGFloat,
+        green: inout CGFloat,
+        blue: inout CGFloat,
+        alpha: inout CGFloat,
+        in environment: EnvironmentValues
+    ) -> Bool {
+        let rgba = provider.resolve(in: environment)
+        red = rgba.red
+        green = rgba.green
+        blue = rgba.blue
+        alpha = rgba.opacity
+        return rgba.space == .sRGB
+    }
 }
