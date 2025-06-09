@@ -10,7 +10,7 @@ import JavaRuntime
 import AndroidKit
 import AndroidJavaLang
 
-@JavaClass("com.pureswift.swiftandroid.SwiftRunnable", extends: AndroidJavaLang.Runnable.self)
+@JavaClass("com.pureswift.swiftandroid.Runnable", extends: AndroidJavaLang.Runnable.self)
 open class Runnable: JavaObject {
     
     private(set) var block: (() -> Void)?
@@ -28,7 +28,7 @@ open class Runnable: JavaObject {
     }
 }
 
-@JavaImplementation("com.pureswift.swiftandroid.SwiftRunnable")
+@JavaImplementation("com.pureswift.swiftandroid.Runnable")
 extension Runnable {
     
     @JavaMethod
