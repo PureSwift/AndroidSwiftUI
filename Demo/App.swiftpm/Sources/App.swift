@@ -19,3 +19,11 @@ extension DemoApp: App {
         }
     }
 }
+
+// App launch point
+#if canImport(AndroidSwiftUI)
+@_silgen_name("AndroidSwiftUIMain")
+func AndroidSwiftUIMain() {
+    DemoApp.main()
+}
+#endif

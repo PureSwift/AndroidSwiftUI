@@ -61,3 +61,6 @@ public extension App {
     CurrentValueSubject(.light).eraseToAnyPublisher()
   }
 }
+
+@_silgen_name("AndroidSwiftUIMain")
+func AndroidSwiftUIMain()
