@@ -4,34 +4,49 @@ import AndroidSwiftUI
 import SwiftUI
 #endif
 
+import Foundation
+
 struct ContentView: View {
+    
+    @State
+    var counter = 1
+    
+    @State
+    var date = Date()
+    
+    @State
+    var task: Task<Void, Never>?
+    
     var body: some View {
         HStack {
             VStack(spacing: 20) {
-                VStack {
-                    
-                    Image("globe")
-                    
-                    Text("Hello, world!")
-                        .foregroundColor(.blue)
-                        .bold()
-                        .font(.title)
+                Image("globe")
+                Text("Hello World")
+                Text(verbatim: date.formatted(date: .numeric, time: .complete))
+                HStack {
+                    Text("Counter:")
+                    Text(verbatim: counter.description)
                 }
-                VStack {
-                    HStack {
-                        Image("heart.fill")
-                        Text("Small")
-                    }
-                    HStack {
-                        Image("heart.fill")
-                        Text("Medium")
-                    }
-           
-                    HStack {
-                        Image("heart.fill")
-                        Text("Large")
-                   }
+                Button("Increment") {
+                    counter += 1
                 }
+            }
+            .onAppear {
+                task = Task {
+                    while true {
+                        do {
+                            try await Task.sleep(for: .seconds(1))
+                            date = Date()
+                        }
+                        catch {
+                            return
+                        }
+                    }
+                }
+            }
+            .onDisappear {
+                task?.cancel()
+                task = nil
             }
         }
     }
