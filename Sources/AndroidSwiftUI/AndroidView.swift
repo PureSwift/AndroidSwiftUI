@@ -9,13 +9,13 @@ import AndroidKit
 
 internal protocol AnyAndroidView {
     
-    func build(parent: JavaObject, before sibling: JavaObject?) -> JavaObject?
+    func createAndroidView() -> AndroidView.View
     
-    func update(component: inout JavaObject, parent: JavaObject)
+    func updateAndroidView()
     
-    func remove(component: JavaObject, parent: JavaObject)
+    func removeAndroidView()
 }
-
+/*
 internal struct _AndroidView <Content: View> : View, AnyAndroidView {
     
     let _build: (JavaObject, JavaObject?) -> JavaObject?
@@ -38,16 +38,16 @@ internal struct _AndroidView <Content: View> : View, AnyAndroidView {
         self.content = content()
     }
     
-    func build(parent: JavaObject, before sibling: JavaObject?) -> JavaObject? {
-        _build(parent, sibling)
+    func createAndroidView() -> AndroidView.View {
+        
     }
     
-    func update(component: inout JavaObject, parent: JavaObject) {
-        _update(&component, parent)
+    func updateAndroidView() {
+        
     }
     
-    func remove(component: JavaObject, parent: JavaObject) {
-        _remove(component, parent)
+    func removeAndroidView() {
+        
     }
     
     var body: Never {
@@ -61,3 +61,4 @@ extension _AndroidView: ParentView {
         [AnyView(content)]
     }
 }
+*/

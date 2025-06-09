@@ -1,6 +1,12 @@
 package com.pureswift.swiftandroid
 
 import android.os.Bundle
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.Spinner
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.viewinterop.AndroidView
 import com.pureswift.swiftandroid.ui.theme.SwiftAndroidTheme
 
 class MainActivity : ComponentActivity() {
@@ -21,17 +28,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onCreateSwift(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            SwiftAndroidTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
-        }
+        val view = LinearLayout(this)
+        view.gravity = Gravity.CENTER
+        val textView = TextView(this)
+        textView.text = "Loading..."
+        view.addView(textView)
+        setContentView(view)
+    }
+
+    external fun onCreateSwift(savedInstanceState: Bundle?)
+
+    fun setRootView(view: View) {
+        setContentView(view)
     }
 }
 

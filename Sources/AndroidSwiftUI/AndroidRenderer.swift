@@ -49,6 +49,7 @@ final class AndroidRenderer: Renderer {
             case .application:
                 // root view, add to main activity
                 let viewObject = anyView.createAndroidView()
+                MainActivity.shared.setRootView(viewObject)
                 return AndroidTarget(host.view, viewObject)
             case .view(let parentView):
                 // subview add to parent

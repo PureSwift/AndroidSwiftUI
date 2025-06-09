@@ -34,17 +34,7 @@ final class AndroidTarget: Target {
     }
 }
 
-
 extension AndroidTarget {
-    
-    var javaObject: JavaObject {
-        switch storage {
-        case .application:
-            return Application.shared
-        case let .view(view):
-            return view
-        }
-    }
     
     func destroy() {
         switch storage {

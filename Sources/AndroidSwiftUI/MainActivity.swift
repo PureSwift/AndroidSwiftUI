@@ -10,10 +10,10 @@ import AndroidKit
 @JavaClass("com.pureswift.swiftandroid.MainActivity")
 open class MainActivity: AndroidApp.Activity {
     
-    final static var shared: MainActivity!
+    public internal(set) static var shared: MainActivity!
     
     @JavaMethod
-    open func setRootView(_ view: AndroidView.View)
+    open func setRootView(_ view: AndroidView.View?)
 }
 
 @JavaImplementation("com.pureswift.swiftandroid.MainActivity")
