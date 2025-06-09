@@ -191,3 +191,20 @@ extension Color: ShapeStyle {
 extension Color: View {
   public typealias Body = _ShapeView<Rectangle, Self>
 }
+
+internal extension Color {
+    
+    /// Converts a SwiftUI Color to a UInt32 ARGB hex value (0xAARRGGBB)
+    func argbBitMask(in environment: EnvironmentValues) -> UInt32 {
+        let rgba = provider.resolve(in: environment)
+        let red = rgba.red
+        let green = rgba.green
+        let blue = rgba.blue
+        let alpha = rgba.opacity
+        let a = UInt32(alpha * 255) << 24
+        let r = UInt32(red * 255) << 16
+        let g = UInt32(green * 255) << 8
+        let b = UInt32(blue * 255)
+        return a | r | g | b
+    }
+}
