@@ -5,6 +5,7 @@
 //  Created by Alsey Coleman Miller on 6/9/25.
 //
 
+import Foundation
 import AndroidKit
 
 extension Button: AnyAndroidView {
@@ -93,9 +94,7 @@ extension AndroidButton: AndroidViewRepresentable {
     
     /// Creates the view object and configures its initial state.
     public func makeAndroidView(context: Self.Context) -> AndroidWidget.Button {
-        let view = AndroidWidget.Button(context.androidContext)
-        updateView(view)
-        return view
+        createView(context: context.androidContext)
     }
     
     /// Updates the state of the specified view with new information from SwiftUI.
@@ -109,16 +108,18 @@ extension AndroidButton {
     func createView(context: AndroidContent.Context) -> AndroidWidget.Button {
         let view = AndroidWidget.Button(context)
         updateView(view)
+        // set on click listener
+        let id = UUID().uuidString
+        let listener = ViewOnClickListener(id: id)
+        assert(listener.getId() == id)
+        listener.action = self.action
+        view.setClickable(true)
+        view.setOnClickListener(listener.as(AndroidView.View.OnClickListener.self))
         return view
     }
     
     func updateView(_ view: AndroidWidget.Button) {
         // update label
         self.label.updateTextView(view)
-        // set on click listener
-        let listener = ViewOnClickListener()
-        listener.action = self.action
-        view.setClickable(true)
-        view.setOnClickListener(listener.as(AndroidView.View.OnClickListener.self))
     }
 }

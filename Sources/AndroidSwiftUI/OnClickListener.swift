@@ -9,8 +9,12 @@ import AndroidKit
 
 @JavaClass("com.pureswift.swiftandroid.ViewOnClickListener", extends: AndroidView.View.OnClickListener.self)
 open class ViewOnClickListener: JavaObject {
+        
+    @JavaMethod
+    @_nonoverride public convenience init(id: String, environment: JNIEnvironment? = nil)
     
-    var action: (() -> ())?
+    @JavaMethod
+    func getId() -> String
 }
 
 @JavaImplementation("com.pureswift.swiftandroid.ViewOnClickListener")
@@ -18,7 +22,7 @@ extension ViewOnClickListener {
     
     @JavaMethod
     func onClick() {
-        log("\(self).\(#function)")
+        log("\(self).\(#function) ID \(getId())")
         guard let action else {
             log("\(self).\(#function): No Action Configured")
             return
@@ -27,6 +31,19 @@ extension ViewOnClickListener {
             await MainActor.run {
                 action()
             }
+        }
+    }
+}
+
+public extension ViewOnClickListener {
+    
+    static private(set) var actions: [String: (() -> ())] = [:]
+    
+    var action: (() -> ())? {
+        get {
+            Self.actions[getId()]
+        } set {
+            Self.actions[getId()] = newValue
         }
     }
 }
