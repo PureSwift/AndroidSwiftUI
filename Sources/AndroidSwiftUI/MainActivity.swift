@@ -29,12 +29,30 @@ extension MainActivity {
         // start app
         AndroidSwiftUIMain()
         
+        runAsync()
+        
         // drain main queue
         //drainMainQueue()
     }
 }
 
 private extension MainActivity {
+    
+    func runAsync() {
+        RunLoop.main.run(until: Date() + 0.1)
+        DispatchQueue.main.async {
+            Self.log("\(self).\(#function) Main Thread Async")
+        }
+        DispatchQueue.global(qos: .default).async {
+            Self.log("\(self).\(#function) Default Dispatch Queue Async")
+        }
+        Task {
+            Self.log("\(self).\(#function) Task Started")
+            await MainActor.run {
+                RunLoop.main.run(until: Date() + 0.1)
+            }
+        }
+    }
     
     nonisolated func drainMainQueue() {
         log("\(self).\(#function)")
@@ -49,6 +67,9 @@ private extension MainActivity {
                     RunLoop.main.run(until: Date() + 0.01)
                 }
                 self.runOnUiThread(runnable.as(AndroidJavaLang.Runnable.self))
+                if #available(macOS 13.0, *) {
+                    try? await Task.sleep(for: .seconds(1))
+                }
             }
         }
     }
@@ -58,8 +79,25 @@ extension MainActivity {
     
     static var logTag: String { "MainActivity" }
     
+    static let log = try! JavaClass<AndroidUtil.Log>()
+    
+    static func log(_ string: String) {
+        _ = Self.log.d(Self.logTag, string)
+    }
+    
+    static func logInfo(_ string: String) {
+        _ = Self.log.i(Self.logTag, string)
+    }
+    
+    static func logError(_ string: String) {
+        _ = Self.log.e(Self.logTag, string)
+    }
+    
     func log(_ string: String) {
-        let log = try! JavaClass<AndroidUtil.Log>()
-        _ = log.v(Self.logTag, string)
+        Self.log(string)
+    }
+    
+    func logError(_ string: String) {
+        Self.logError(string)
     }
 }

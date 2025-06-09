@@ -7,7 +7,6 @@
 
 import JavaKit
 import AndroidKit
-import Dispatch
 
 final class AndroidRenderer: Renderer {
         
@@ -18,16 +17,19 @@ final class AndroidRenderer: Renderer {
     static var shared: AndroidRenderer!
     
     init(app: any App, configuration: _AppConfiguration) {
+        Self.log("\(Self.self).\(#function)")
         self.configuration = configuration
-        log("\(self).\(#function)")
         self.reconciler = StackReconciler(
             app: app,
             target: AndroidTarget.application,
             environment: .defaultEnvironment, // merge environment with scene environment
             renderer: self, // FIXME: Always retained
             scheduler: { next in
-                DispatchQueue.main.async {
-                    next()
+                Task {
+                    await MainActor.run {
+                        Self.log("\(self).\(#function) Scheduling next view update")
+                        next()
+                    }
                 }
             }
         )
@@ -47,7 +49,8 @@ final class AndroidRenderer: Renderer {
     ) -> TargetType? {
         log("\(self).\(#function) Host \(host.view.typeConstructorName) Parent \(parent.storage)")
         guard let activity = MainActivity.shared else {
-            fatalError("MainActivity.shared != nil")
+            logError("MainActivity.shared != nil")
+            return nil
         }
         let context = activity as AndroidContent.Context
         if let anyView = mapAnyView( host.view, transform: { (component: AnyAndroidView) in component }) {
@@ -63,7 +66,7 @@ final class AndroidRenderer: Renderer {
                 // subview add to parent
                 log("\(self).\(#function) \(#line)")
                 guard parentView.is(ViewGroup.self), let viewGroup = parentView.as(ViewGroup.self) else {
-                    log("\(self).\(#function) \(#line) Parent View \(parentView.getClass().getName()) is not a ViewGroup)")
+                    logError("\(self).\(#function) \(#line) Parent View \(parentView.getClass().getName()) is not a ViewGroup)")
                     return nil
                 }
                 let viewObject = anyView.createAndroidView(context)
@@ -145,8 +148,21 @@ private extension AndroidRenderer {
     
     static var logTag: String { "AndroidRenderer" }
     
+    static let log = try! JavaClass<AndroidUtil.Log>()
+    
+    static func log(_ string: String) {
+        _ = Self.log.d(Self.logTag, string)
+    }
+    
+    static func logError(_ string: String) {
+        _ = Self.log.e(Self.logTag, string)
+    }
+    
     func log(_ string: String) {
-        let log = try! JavaClass<AndroidUtil.Log>()
-        _ = log.d(Self.logTag, string)
+        Self.log(string)
+    }
+    
+    func logError(_ string: String) {
+        Self.logError(string)
     }
 }
