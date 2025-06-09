@@ -8,7 +8,7 @@
 import AndroidKit
 
 /// A wrapper for an Android view that you use to integrate that view into your SwiftUI view hierarchy.
-public protocol AndroidViewRepresentable: View {
+public protocol AndroidViewRepresentable: AndroidSwiftUI.View, AnyAndroidView {
     
     /// The type of view to present.
     associatedtype AndroidViewType: AndroidView.View
@@ -35,7 +35,27 @@ public extension AndroidViewRepresentable where Self.Coordinator == Void {
 /// Contextual information about the state of the system that you use to create and update your Android view.
 public struct AndroidViewRepresentableContext <Content: View> {
     
-    internal init() {
+    let androidContext: AndroidContent.Context
+}
+
+extension AndroidViewRepresentable where Self: AnyAndroidView {
+    
+    public func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
+        let context = Self.Context(androidContext: context)
+        let view = makeAndroidView(context: context)
+        return view
+    }
+    
+    public func updateAndroidView(_ view: AndroidView.View) {
+        guard let view = view as? Self.AndroidViewType else {
+            assertionFailure("Expected \(AndroidViewType.self), found \(view)")
+            return
+        }
+        let context = Self.Context(androidContext: view.getContext())
+        updateAndroidView(view, context: context)
+    }
+    
+    public func removeAndroidView() {
         
     }
 }
