@@ -80,3 +80,10 @@ public struct WindowGroup<Content>: Scene, TitledScene where Content: View {
     visitor.visit(content)
   }
 }
+
+extension WindowGroup: SceneDeferredToRenderer {
+    
+    public var deferredBody: AnyView {
+        AnyView(content)
+    }
+}
