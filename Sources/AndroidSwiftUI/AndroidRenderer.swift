@@ -45,34 +45,41 @@ final class AndroidRenderer: Renderer {
       to parent: AndroidTarget,
       with host: MountedHost
     ) -> TargetType? {
-        log("\(self).\(#function)")
+        log("\(self).\(#function) \(host.view.typeConstructorName)")
         guard let activity = MainActivity.shared else {
             fatalError("MainActivity.shared != nil")
         }
         let context = activity as AndroidContent.Context
         if let anyView = mapAnyView( host.view, transform: { (component: AnyAndroidView) in component }) {
+            log("\(self).\(#function) \(#line)")
             switch parent.storage {
             case .application:
                 // root view, add to main activity
                 let viewObject = anyView.createAndroidView(context)
                 activity.setRootView(viewObject)
+                log("\(self).\(#function) \(#line): Created root view \(viewObject.getClass().getName())")
                 return AndroidTarget(host.view, viewObject)
             case .view(let parentView):
                 // subview add to parent
+                log("\(self).\(#function) \(#line)")
                 guard parentView.is(ViewGroup.self), let viewGroup = parentView.as(ViewGroup.self) else {
+                    log("\(self).\(#function) \(#line)")
                     return nil
                 }
                 let viewObject = anyView.createAndroidView(context)
+                // TODO: Determine order
                 viewGroup.addView(viewObject)
+                log("\(self).\(#function) \(#line): Add \(viewObject.getClass().getName()) to \(viewGroup.getClass().getName())")
                 return AndroidTarget(host.view, viewObject)
             }
         } else {
             
             // handle cases like `TupleView`
             if mapAnyView(host.view, transform: { (view: ParentView) in view }) != nil {
+                log("\(self).\(#function) \(#line)")
                 return parent
             }
-            
+            log("\(self).\(#function) \(#line)")
             return nil
         }
     }
