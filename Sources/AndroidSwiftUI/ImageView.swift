@@ -56,21 +56,29 @@ final class ImageCache {
     private(set) var images: [String: Int32] = [:]
     
     func load(_ imageName: String) -> Int32? {
-        log("\(self).\(#function) load \(imageName)")
+        log("\(self).\(#function) load '\(imageName)'")
         // return cached resource ID
         if let resource = images[imageName] {
-            log("\(self).\(#function) Return cached resource ID \(resource) for \(imageName)")
+            log("\(self).\(#function) Return cached resource ID \(resource) for '\(imageName)'")
             return resource
         }
         // try to get resource
-        let resource = resources.getIdentifier("drawableName", "drawable", "com.pureswift.swiftandroid")
-        guard resource != 0 else {
-            log("\(self).\(#function) Resource not found for \(imageName)")
+        
+        guard let resource = identifier(for: imageName) else {
+            log("\(self).\(#function) Resource not found for '\(imageName)'")
             return nil
         }
-        log("\(self).\(#function) Found resource ID \(resource) for \(imageName)")
+        log("\(self).\(#function) Found resource ID \(resource) for '\(imageName)'")
         // cache value
         images[imageName] = resource
+        return resource
+    }
+    
+    private func identifier(for name: String) -> Int32? {
+        let resource = resources.getIdentifier(name, "drawable", "com.pureswift.swiftandroid")
+        guard resource != 0 else {
+            return nil
+        }
         return resource
     }
 }
