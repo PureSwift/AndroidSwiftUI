@@ -19,6 +19,7 @@ final class AndroidRenderer: Renderer {
     
     init(app: any App, configuration: _AppConfiguration) {
         self.configuration = configuration
+        log("\(self).\(#function)")
         self.reconciler = StackReconciler(
             app: app,
             target: AndroidTarget.application,
@@ -30,7 +31,6 @@ final class AndroidRenderer: Renderer {
                 }
             }
         )
-        log("\(self).\(#function)")
     }
     
     /** Function called by a reconciler when a new target instance should be
@@ -59,10 +59,11 @@ final class AndroidRenderer: Renderer {
                 return AndroidTarget(host.view, viewObject)
             case .view(let parentView):
                 // subview add to parent
-                guard parentView.is(ViewGroup.self) else {
+                guard parentView.is(ViewGroup.self), let viewGroup = parentView.as(ViewGroup.self) else {
                     return nil
                 }
                 let viewObject = anyView.createAndroidView(context)
+                viewGroup.addView(viewObject)
                 return AndroidTarget(host.view, viewObject)
             }
         } else {
@@ -133,6 +134,6 @@ private extension AndroidRenderer {
     
     func log(_ string: String) {
         let log = try! JavaClass<AndroidUtil.Log>()
-        _ = log.v(Self.logTag, string)
+        _ = log.d(Self.logTag, string)
     }
 }
