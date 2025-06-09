@@ -6,7 +6,7 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        NavigationView {
+        HStack {
             VStack(spacing: 20) {
                 VStack {
                     
@@ -15,6 +15,7 @@ struct ContentView: View {
                     Text("Hello, world!")
                         .foregroundColor(.blue)
                         .bold()
+                        .font(.title)
                 }
                 VStack {
                     HStack {
@@ -31,11 +32,7 @@ struct ContentView: View {
                         Text("Large")
                    }
                 }
-                NavigationLink(destination: Text("Destination")) {
-                    Text("Next")
-                }
             }
-            .navigationTitle("Demo")
         }
     }
 }
