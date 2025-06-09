@@ -64,7 +64,7 @@ extension Text {
             }
         }
         // set new state
-        view.setTextColor(color, in: environment)
+        view.setTextColor(color, in: proxy.environment)
     }
     
 }
