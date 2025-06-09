@@ -37,10 +37,7 @@ extension Image {
             assertionFailure()
             return
         }
-        guard let resource = try? ImageCache.shared.load(imageName) else {
-            assertionFailure()
-            return
-        }
+        let resource = ImageCache.shared.load(imageName)
         // set the image on the view
         view.setImageResource(resource)
     }
@@ -52,17 +49,17 @@ final class ImageCache {
     
     private init() { }
     
-    let drawable = AndroidR.R.drawable()
-    
+    let resources = Resources()
+        
     private(set) var images: [String: Int32] = [:]
     
-    func load(_ imageName: String) throws -> Int32 {
+    func load(_ imageName: String) -> Int32 {
         // return cached resource ID
         if let resource = images[imageName] {
             return resource
         }
         // try to get resource
-        let resource = try drawable.dynamicJavaMethodCall(methodName: imageName, resultType: Int32.self)
+        let resource = resources.getIdentifier("drawableName", "drawable", "com.pureswift.swiftandroid")
         // cache value
         images[imageName] = resource
         return resource
