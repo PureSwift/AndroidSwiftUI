@@ -9,7 +9,7 @@ import AndroidKit
 
 internal protocol AnyAndroidView {
     
-    func createAndroidView() -> AndroidView.View
+    func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View
     
     func updateAndroidView()
     

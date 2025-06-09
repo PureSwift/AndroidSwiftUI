@@ -9,8 +9,12 @@ struct ContentView: View {
         NavigationView {
             VStack(spacing: 20) {
                 VStack {
+                    
                     Image("globe")
+                    
                     Text("Hello, world!")
+                        .foregroundColor(.blue)
+                        .bold()
                 }
                 VStack {
                     HStack {

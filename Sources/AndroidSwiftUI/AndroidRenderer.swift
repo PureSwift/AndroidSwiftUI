@@ -30,6 +30,7 @@ final class AndroidRenderer: Renderer {
                 }
             }
         )
+        log("\(self).\(#function)")
     }
     
     /** Function called by a reconciler when a new target instance should be
@@ -44,19 +45,24 @@ final class AndroidRenderer: Renderer {
       to parent: AndroidTarget,
       with host: MountedHost
     ) -> TargetType? {
+        log("\(self).\(#function)")
+        guard let activity = MainActivity.shared else {
+            fatalError("MainActivity.shared != nil")
+        }
+        let context = activity as AndroidContent.Context
         if let anyView = mapAnyView( host.view, transform: { (component: AnyAndroidView) in component }) {
             switch parent.storage {
             case .application:
                 // root view, add to main activity
-                let viewObject = anyView.createAndroidView()
-                MainActivity.shared.setRootView(viewObject)
+                let viewObject = anyView.createAndroidView(context)
+                activity.setRootView(viewObject)
                 return AndroidTarget(host.view, viewObject)
             case .view(let parentView):
                 // subview add to parent
                 guard parentView.is(ViewGroup.self) else {
                     return nil
                 }
-                let viewObject = anyView.createAndroidView()
+                let viewObject = anyView.createAndroidView(context)
                 return AndroidTarget(host.view, viewObject)
             }
         } else {
@@ -79,6 +85,7 @@ final class AndroidRenderer: Renderer {
       target: AndroidTarget,
       with host: MountedHost
     ) {
+        log("\(self).\(#function)")
         guard let widget = mapAnyView(host.view, transform: { (widget: AnyAndroidView) in widget })
             else { return }
 
@@ -96,6 +103,7 @@ final class AndroidRenderer: Renderer {
       from parent: AndroidTarget,
       with task: UnmountHostTask<AndroidRenderer>
     ) {
+        log("\(self).\(#function)")
         defer { task.finish() }
         
         guard mapAnyView(task.host.view, transform: { (widget: AnyAndroidView) in widget }) != nil
@@ -116,5 +124,15 @@ final class AndroidRenderer: Renderer {
      */
     func isPrimitiveView(_ type: Any.Type) -> Bool {
         type is AndroidPrimitive.Type
+    }
+}
+
+private extension AndroidRenderer {
+    
+    static var logTag: String { "AndroidRenderer" }
+    
+    func log(_ string: String) {
+        let log = try! JavaClass<AndroidUtil.Log>()
+        _ = log.v(Self.logTag, string)
     }
 }

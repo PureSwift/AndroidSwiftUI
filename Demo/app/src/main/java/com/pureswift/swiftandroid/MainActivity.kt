@@ -1,6 +1,7 @@
 package com.pureswift.swiftandroid
 
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -30,17 +31,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         onCreateSwift(savedInstanceState)
         enableEdgeToEdge()
+
         val view = LinearLayout(this)
         view.gravity = Gravity.CENTER
         val textView = TextView(this)
         textView.text = "Loading..."
         view.addView(textView)
-        setContentView(view)
+        //setRootView(view)
     }
 
     external fun onCreateSwift(savedInstanceState: Bundle?)
 
     fun setRootView(view: View) {
+        Log.v("MainActivity", "AndroidSwiftUI.MainActivity.setRootView(_:)")
         setContentView(view)
     }
 }

@@ -9,8 +9,8 @@ import AndroidKit
 
 extension Text: AnyAndroidView {
     
-    func createAndroidView() -> AndroidView.View {
-        createView().as(AndroidView.View.self)! // TODO: Fix TextView superclass in AndroidKit
+    func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
+        createView(context: context)
     }
     
     func updateAndroidView() {
@@ -20,9 +20,11 @@ extension Text: AnyAndroidView {
     func removeAndroidView() {
         
     }
+}
+
+extension Text {
     
-    
-    func createView() -> TextView {
+    func createView(context: AndroidContent.Context) -> TextView {
         let view = TextView()
         updateView(view)
         return view
