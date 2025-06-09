@@ -31,13 +31,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         onCreateSwift(savedInstanceState)
         enableEdgeToEdge()
-
-        val view = LinearLayout(this)
-        view.gravity = Gravity.CENTER
-        val textView = TextView(this)
-        textView.text = "Loading..."
-        view.addView(textView)
-        //setRootView(view)
     }
 
     external fun onCreateSwift(savedInstanceState: Bundle?)
