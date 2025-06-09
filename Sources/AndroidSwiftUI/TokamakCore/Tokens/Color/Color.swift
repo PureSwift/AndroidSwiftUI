@@ -195,7 +195,7 @@ extension Color: View {
 internal extension Color {
     
     /// Converts a SwiftUI Color to a UInt32 ARGB hex value (0xAARRGGBB)
-    func argbBitMask(in environment: EnvironmentValues) -> UInt32 {
+    func argbBitMask(in environment: EnvironmentValues = .defaultEnvironment) -> UInt32 {
         let rgba = provider.resolve(in: environment)
         let red = rgba.red
         let green = rgba.green
