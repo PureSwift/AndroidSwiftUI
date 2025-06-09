@@ -9,7 +9,7 @@ import AndroidKit
 
 extension VerticalAlignment {
     
-    var orientation: ViewGravity {
+    var gravity: ViewGravity {
         switch self {
         case .top:
             return .top

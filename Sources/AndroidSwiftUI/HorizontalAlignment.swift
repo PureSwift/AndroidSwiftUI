@@ -9,7 +9,7 @@ import AndroidKit
 
 extension HorizontalAlignment {
     
-    var orientation: ViewGravity {
+    var gravity: ViewGravity {
         switch self {
         case .center:
             return .center
