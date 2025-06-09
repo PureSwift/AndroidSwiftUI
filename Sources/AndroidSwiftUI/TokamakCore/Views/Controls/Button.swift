@@ -35,7 +35,7 @@
 ///     var body: some View {
 ///       Button("\(counter)", action: { counter += 1 })
 ///     }
-public struct Button<Label>: View where Label: View {
+public struct Button<Label> where Label: View {
   let label: Label
   let action: () -> ()
   let role: ButtonRole?
@@ -45,24 +45,6 @@ public struct Button<Label>: View where Label: View {
 
   public init(action: @escaping () -> (), @ViewBuilder label: () -> Label) {
     self.init(role: nil, action: action, label: label)
-  }
-
-  @_spi(TokamakCore)
-  public var body: some View {
-    switch buttonStyle {
-    case let .primitiveButtonStyle(style):
-      style.makeBody(configuration: .init(
-        role: role, label: .init(body: AnyView(label)),
-        action: action
-      ))
-    case let .buttonStyle(style):
-      _Button(
-        label: label,
-        role: role,
-        action: action,
-        anyStyle: style
-      )
-    }
   }
 }
 

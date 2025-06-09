@@ -19,7 +19,7 @@ public enum ColorScheme: CaseIterable, Equatable {
 
 public struct _ColorSchemeKey: EnvironmentKey {
   public static var defaultValue: ColorScheme {
-    fatalError("\(self) must have a renderer-provided default value")
+      .light
   }
 }
 
