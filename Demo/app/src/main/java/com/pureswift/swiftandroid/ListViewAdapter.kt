@@ -4,10 +4,20 @@ import android.database.DataSetObserver
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ListAdapter
-/*
-class ListViewAdapter: ListAdapter {
+
+class ListViewAdapter(val swiftObject: SwiftObject): ListAdapter {
 
     external override fun getCount(): Int
+
+    external override fun isEmpty(): Boolean
+
+    external override fun getItem(position: Int): Any?
+
+    external override fun getItemId(position: Int): Long
+
+    external override fun getItemViewType(position: Int): Int
+
+    external override fun getViewTypeCount(): Int
 
     external override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View?
 
@@ -15,15 +25,9 @@ class ListViewAdapter: ListAdapter {
 
     external override fun isEnabled(position: Int): Boolean
 
-    override fun registerDataSetObserver(observer: DataSetObserver?) {
+    external override fun registerDataSetObserver(observer: DataSetObserver?)
 
-    }
+    external override fun unregisterDataSetObserver(observer: DataSetObserver?)
 
-    override fun unregisterDataSetObserver(observer: DataSetObserver?) {
-        TODO("Not yet implemented")
-    }
-
-    override fun getItem(position: Int): Any? {
-        TODO("Not yet implemented")
-    }
-}*/
+    external override fun hasStableIds(): Boolean
+}

@@ -12,7 +12,74 @@ import AndroidKit
 open class ListViewAdapter: JavaObject {
     
     @JavaMethod
-    @_nonoverride public convenience init(environment: JNIEnvironment? = nil)
+    @_nonoverride public convenience init(swiftObject: SwiftObject!, environment: JNIEnvironment? = nil)
+    
+    @JavaMethod
+    func getContext() -> SwiftObject!
+}
+
+@JavaImplementation("com.pureswift.swiftandroid.ListViewAdapter")
+extension ListViewAdapter {
+    
+    @JavaMethod
+    func hasStableIds() -> Bool {
+        true
+    }
+    
+    @JavaMethod
+    func isEmpty() -> Bool {
+        true
+    }
+    
+    @JavaMethod
+    func getCount() -> Int32 {
+        0
+    }
+
+    @JavaMethod
+    func getItem(position: Int32) -> JavaObject? {
+        nil
+    }
+    
+    @JavaMethod
+    func getItemId(position: Int32) -> Int64 {
+        0
+    }
+
+    @JavaMethod
+    func getItemViewType(position: Int32) -> Int32 {
+        0
+    }
+
+    @JavaMethod
+    func getViewTypeCount() -> Int32 {
+        1
+    }
+
+    @JavaMethod
+    func getView(position: Int32, convertView: AndroidView.View?, parent: ViewGroup?) -> AndroidView.View? {
+        nil
+    }
+
+    @JavaMethod
+    func areAllItemsEnabled() -> Bool {
+        true
+    }
+
+    @JavaMethod
+    func isEnabled(position: Int32) -> Bool {
+        true
+    }
+
+    @JavaMethod
+    func registerDataSetObserver(observer: JavaObject?) {
+        
+    }
+
+    @JavaMethod
+    func unregisterDataSetObserver(observer: JavaObject?) {
+        
+    }
 }
 
 extension ListViewAdapter {
