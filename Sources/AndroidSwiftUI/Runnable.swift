@@ -9,22 +9,18 @@ import JavaKit
 import JavaRuntime
 import AndroidKit
 import AndroidJavaLang
-
+/*
 @JavaClass("com.pureswift.swiftandroid.Runnable", extends: AndroidJavaLang.Runnable.self)
 open class Runnable: JavaObject {
     
-    private(set) var block: (() -> Void)?
+    public typealias Block = () -> ()
     
     @JavaMethod
-    @_nonoverride public convenience init(environment: JNIEnvironment? = nil)
+    @_nonoverride public convenience init(block: SwiftObject?, environment: JNIEnvironment? = nil)
     
-    public convenience init(_ block: @escaping () -> Void) {
-        self.init(environment: nil)
-        self.block = block
-    }
-    
-    deinit {
-        log("\(self).\(#function)")
+    public convenience init(_ block: @escaping () -> Void, environment: JNIEnvironment? = nil) {
+        let object = SwiftObject(block, environment: environment)
+        self.init(block: object, environment: environment)
     }
 }
 
@@ -33,12 +29,7 @@ extension Runnable {
     
     @JavaMethod
     func run() {
-        guard let block else {
-            logError("\(self).\(#function): No block set")
-            return
-        }
         block()
-        log("\(self).\(#function) Executed")
     }
 }
 
@@ -49,7 +40,6 @@ extension Runnable {
     static let log = try! JavaClass<AndroidUtil.Log>()
     
     func log(_ string: String) {
-        
         _ = Self.log.d(Self.logTag, string)
     }
     
@@ -57,3 +47,4 @@ extension Runnable {
         _ = Self.log.e(Self.logTag, string)
     }
 }
+*/

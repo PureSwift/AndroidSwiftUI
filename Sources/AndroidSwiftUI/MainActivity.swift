@@ -30,9 +30,6 @@ extension MainActivity {
         AndroidSwiftUIMain()
         
         runAsync()
-        
-        // drain main queue
-        //drainMainQueue()
     }
 }
 
@@ -50,26 +47,6 @@ private extension MainActivity {
             Self.log("\(self).\(#function) Task Started")
             await MainActor.run {
                 RunLoop.main.run(until: Date() + 0.1)
-            }
-        }
-    }
-    
-    nonisolated func drainMainQueue() {
-        log("\(self).\(#function)")
-        // drain main queue
-        Task { [weak self] in
-            while let self = self {
-                log("\(self).\(#function) Task Started")
-                if #available(macOS 13.0, *) {
-                    try? await Task.sleep(for: .milliseconds(100))
-                }
-                let runnable = AndroidSwiftUI.Runnable {
-                    RunLoop.main.run(until: Date() + 0.01)
-                }
-                self.runOnUiThread(runnable.as(AndroidJavaLang.Runnable.self))
-                if #available(macOS 13.0, *) {
-                    try? await Task.sleep(for: .seconds(1))
-                }
             }
         }
     }
