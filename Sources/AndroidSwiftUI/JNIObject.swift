@@ -11,7 +11,7 @@ import JavaTypes
 
 internal protocol JNIObject: AnyObject { }
 
-internal extension JNIObject {
+extension JNIObject {
     
     static fileprivate func recoverPointer( _ swiftObject: jlong) -> uintptr_t {
         #if os(Android)
@@ -25,19 +25,18 @@ internal extension JNIObject {
         return swiftPointer
     }
     
-    /// Get the object pointer with the ARC +1 so Java owns it.
-    ///
-    /// Make sure to only call this once.
-    func javaPointerRetained() -> jlong {
-        jlong(unsafeBitCast(Unmanaged.passRetained(self), to: uintptr_t.self))
+    internal func swiftValue() -> jvalue {
+        return jvalue( j: jlong(bitPattern: unsafeBitCast(Unmanaged.passRetained(self), to: uintptr_t.self)))
     }
     
-    static func swiftObject(from pointer: jlong) -> Self {
+    internal static func swiftObject(from pointer: jlong) -> Self {
         return unsafeBitCast( recoverPointer( pointer ), to: Self.self )
     }
     
-    static func release(swiftObject: jlong) {
+    internal static func release(swiftObject: jlong) {
+        
         let toRelease = unsafeBitCast( recoverPointer( swiftObject ), to: Self.self )
+        
         Unmanaged.passUnretained(toRelease).release()
     }
 }
