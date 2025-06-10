@@ -3,13 +3,11 @@ package com.pureswift.swiftandroid
 /// Swift object retained by JVM
 class SwiftObject(val swiftObject: Long, val type: String) {
 
-    fun getSwiftObject(): Long {
-        return this.swiftObject
+    override fun toString(): String {
+        return toStringSwift()
     }
 
-    fun getType(): String {
-        return this.type
-    }
+    external fun toStringSwift(): String
 
     fun finalize() {
         finalizeSwift()
