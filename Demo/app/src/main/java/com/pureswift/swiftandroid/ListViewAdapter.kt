@@ -5,7 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ListAdapter
 
-class ListViewAdapter(val swiftObject: SwiftObject): ListAdapter {
+class ListViewAdapter(val context: SwiftObject): ListAdapter {
 
     external override fun getCount(): Int
 

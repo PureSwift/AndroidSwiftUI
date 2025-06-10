@@ -23,20 +23,22 @@ struct ContentView: View {
     }
     
     var body: some View {
-        HStack {
+        VStack {/*
             HStack {
                 VStack(spacing: 20) {
                     Image("globe")
                     Text("Hello World")
                     Text(verbatim: date.formatted(date: .numeric, time: .complete))
-                    HStack {
-                        Text("Counter:")
-                        Text(verbatim: counter.description)
+                    if counter > 0 {
+                        HStack {
+                            Text("Counter:")
+                            Text(verbatim: counter.description)
+                        }
                     }
                     Button("Increment") {
                         counter += 1
                         if counter > 20 {
-                            counter = 1
+                            counter = 0
                         }
                     }
                 }
@@ -57,10 +59,10 @@ struct ContentView: View {
                     task?.cancel()
                     task = nil
                 }
+            }*/
+            List(items) { item in
+                Text(verbatim: item.title)
             }
-        }
-        List(items) { item in
-            Text(verbatim: item.title)
         }
     }
 }

@@ -28,22 +28,22 @@ extension ListViewAdapter {
     
     @JavaMethod
     func isEmpty() -> Bool {
-        true
+        context.items.isEmpty
     }
     
     @JavaMethod
     func getCount() -> Int32 {
-        0
+        Int32(context.items.count)
     }
 
     @JavaMethod
     func getItem(position: Int32) -> JavaObject? {
-        nil
+        JavaString(context.items[Int(position)])
     }
     
     @JavaMethod
     func getItemId(position: Int32) -> Int64 {
-        0
+        Int64(position)
     }
 
     @JavaMethod
@@ -58,7 +58,14 @@ extension ListViewAdapter {
 
     @JavaMethod
     func getView(position: Int32, convertView: AndroidView.View?, parent: ViewGroup?) -> AndroidView.View? {
-        nil
+        guard let parent else {
+            assertionFailure()
+            return nil
+        }
+        let view = TextView(parent.getContext())
+        let item = context.items[Int(position)]
+        view.text = item
+        return view
     }
 
     @JavaMethod
@@ -79,6 +86,23 @@ extension ListViewAdapter {
     @JavaMethod
     func unregisterDataSetObserver(observer: JavaObject?) {
         
+    }
+}
+
+extension ListViewAdapter {
+    
+    struct Context {
+        
+        let items: [String]
+    }
+    
+    var context: Context {
+        get {
+            getContext().valueObject().value as! Context
+        }
+        set {
+            getContext().valueObject().value = newValue
+        }
     }
 }
 

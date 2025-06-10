@@ -34,17 +34,16 @@ extension AndroidListView {
     
     func createView(context: AndroidContent.Context) -> AndroidWidget.ListView {
         let view = AndroidWidget.ListView(context)
-        updateView(view)
+        let adapterContext = ListViewAdapter.Context(items: items)
+        let swiftObject = SwiftObject(adapterContext)
+        let adapter = ListViewAdapter(swiftObject: swiftObject)
+        view.setAdapter(adapter.as(Adapter.self))
         return view
     }
     
     func updateView(_ view: AndroidWidget.ListView) {
-        //let adapter = view.getAdapter().as(ArrayAdapter<JavaString>.self) as! ArrayAdapter<JavaString>
-        //adapter.clear()
-        let adapter = ArrayAdapter<JavaString>()
-        for item in self.items {
-            adapter.add(JavaString(item))
-        }
-        view.setAdapter(adapter.as(Adapter.self))
+        let adapterContext = ListViewAdapter.Context(items: items)
+        let adapter = view.getAdapter().as(ListViewAdapter.self) as! ListViewAdapter
+        adapter.context = adapterContext
     }
 }
