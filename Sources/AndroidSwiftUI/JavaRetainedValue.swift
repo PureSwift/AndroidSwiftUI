@@ -9,25 +9,30 @@ import JavaKit
 import JavaRuntime
 
 @JavaClass("com.pureswift.swiftandroid.SwiftObject")
-public class SwiftObject: JavaObject {
+open class SwiftObject: JavaObject {
     
     @JavaMethod
-    @_nonoverride public convenience init(swiftObject: Int64, type: String, environment: JNIEnvironment? = nil)
+    @_nonoverride public convenience init(swiftObject: jlong, type: String, environment: JNIEnvironment? = nil)
     
     @JavaMethod
-    func getSwiftObject() -> Int64
+    open func getSwiftObject() -> jlong
     
     @JavaMethod
-    func getType() -> String
+    open func getType() -> String
 }
 
 @JavaImplementation("com.pureswift.swiftandroid.SwiftObject")
 extension SwiftObject {
     
     @JavaMethod
+    public func toStringSwift() -> String {
+        "\(valueObject().value)"
+    }
+    
+    @JavaMethod
     public func finalizeSwift() {
         // release owned swift value
-        release()
+        releaseValueObject()
     }
 }
 
@@ -35,74 +40,36 @@ extension SwiftObject {
     
     convenience init<T>(_ value: T, environment: JNIEnvironment? = nil) {
         let box = JavaRetainedValue(value)
-        let pointer = box.javaPointerRetained()
+        let pointer = box.swiftValue().j
         let type = box.type
         self.init(swiftObject: pointer, type: type, environment: environment)
     }
-    /*
-    var value: T {
-        get {
-            valueObject.value
-        }
-        set {
-            valueObject.value = newValue
-        }
-    }*/
     
-    func valueObject<T>(_ type: T.Type) -> JavaRetainedValue<T> {
-        JavaRetainedValue<T>.unretained(getSwiftObject())
+    func valueObject() -> JavaRetainedValue {
+        JavaRetainedValue.swiftObject(from: getSwiftObject())
     }
 }
 
 private extension SwiftObject {
     
-    func release() {
+    func releaseValueObject() {
         let pointer = getSwiftObject()
-        JavaRetainedValue<T>.release(pointer)
+        JavaRetainedValue.release(swiftObject: pointer)
     }
 }
 
 /// Swift Object retained by JVM.
-final class JavaRetainedValue <T> {
+final class JavaRetainedValue {
     
-    var value: T
+    var value: Any
     
     var type: String {
-        String(describing: T.self)
+        String(describing: Swift.type(of: value))
     }
     
-    init(_ value: T) {
+    init<T>(_ value: T) {
         self.value = value
     }
 }
 
-extension JavaRetainedValue {
-    
-    /// Get the object pointer with the ARC +1 so Java owns it.
-    ///
-    /// Make sure to only call this once.
-    func javaPointerRetained() -> Int64 {
-        Int64(unsafeBitCast(Unmanaged.passRetained(self), to: uintptr_t.self))
-    }
-    
-    static func release(_ swiftObject: Int64) {
-        let object = unretained(swiftObject)
-        Unmanaged.passUnretained(object).release()
-    }
-    
-    static func unretained(_ swiftObject: Int64) -> JavaRetainedValue<T> {
-        unsafeBitCast( recoverPointer( swiftObject ), to: JavaRetainedValue<T>.self )
-    }
-    
-    static fileprivate func recoverPointer( _ swiftObject: Int64) -> uintptr_t {
-        #if os(Android)
-        let swiftPointer = uintptr_t(swiftObject&0xffffffff)
-        #else
-        let swiftPointer = uintptr_t(swiftObject)
-        #endif
-        if swiftPointer == 0 {
-            assertionFailure()
-        }
-        return swiftPointer
-    }
-}
+extension JavaRetainedValue: JNIObject { }
