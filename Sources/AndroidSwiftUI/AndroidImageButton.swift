@@ -49,16 +49,15 @@ extension AndroidImageButton {
     func createView(context: AndroidContent.Context) -> AndroidWidget.ImageButton {
         let view = AndroidWidget.ImageButton(context)
         updateView(view)
+        // set on click listener
+        let listener = ViewOnClickListener(action: action)
+        view.setClickable(true)
+        view.setOnClickListener(listener.as(AndroidView.View.OnClickListener.self))
         return view
     }
     
     func updateView(_ view: AndroidWidget.ImageButton) {
         // update label
         self.label.updateImageView(view)
-        // set on click listener
-        let listener = ViewOnClickListener()
-        listener.action = self.action
-        view.setClickable(true)
-        view.setOnClickListener(listener.as(AndroidView.View.OnClickListener.self))
     }
 }

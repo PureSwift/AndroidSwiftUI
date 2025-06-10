@@ -109,10 +109,7 @@ extension AndroidButton {
         let view = AndroidWidget.Button(context)
         updateView(view)
         // set on click listener
-        let id = UUID().uuidString
-        let listener = ViewOnClickListener(id: id)
-        assert(listener.getId() == id)
-        listener.action = self.action
+        let listener = ViewOnClickListener(action: action)
         view.setClickable(true)
         view.setOnClickListener(listener.as(AndroidView.View.OnClickListener.self))
         return view

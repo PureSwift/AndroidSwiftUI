@@ -10,16 +10,14 @@ import AndroidKit
 
 @JavaClass("com.pureswift.swiftandroid.ViewOnClickListener", extends: AndroidView.View.OnClickListener.self)
 open class ViewOnClickListener: JavaObject {
-        
-    @JavaMethod
-    @_nonoverride public convenience init(id: String, environment: JNIEnvironment? = nil)
+    
+    public typealias Action = () -> ()
     
     @JavaMethod
-    func getId() -> String
+    @_nonoverride public convenience init(action: SwiftObject?, environment: JNIEnvironment? = nil)
     
-    deinit {
-        log("\(self).\(#function) ID \(getId())")
-    }
+    @JavaMethod
+    public func getAction() -> SwiftObject?
 }
 
 @JavaImplementation("com.pureswift.swiftandroid.ViewOnClickListener")
@@ -27,33 +25,23 @@ extension ViewOnClickListener {
     
     @JavaMethod
     func onClick() {
-        log("\(self).\(#function) ID \(getId())")
+        log("\(self).\(#function)")
         // drain queue
         RunLoop.main.run(until: Date() + 0.01)
-        // get action
-        guard let action else {
-            logError("\(self).\(#function): No Action Configured")
-            return
-        }
-        Task {
-            await MainActor.run {
-                action()
-                log("\(self).\(#function) ID \(getId()) Executed")
-            }
-        }
+        action()
+        RunLoop.main.run(until: Date() + 0.01)
     }
 }
 
 public extension ViewOnClickListener {
     
-    static private(set) var actions: [String: (() -> ())] = [:]
-    
-    var action: (() -> ())? {
-        get {
-            Self.actions[getId()]
-        } set {
-            Self.actions[getId()] = newValue
-        }
+    convenience init(action: @escaping () -> (), environment: JNIEnvironment? = nil) {
+        let object = SwiftObject(action, environment: environment)
+        self.init(action: object, environment: environment)
+    }
+        
+    var action: (() -> ()) {
+        getAction()!.valueObject().value as! Action
     }
 }
 
@@ -64,7 +52,6 @@ extension ViewOnClickListener {
     static let log = try! JavaClass<AndroidUtil.Log>()
     
     func log(_ string: String) {
-        
         _ = Self.log.d(Self.logTag, string)
     }
     
