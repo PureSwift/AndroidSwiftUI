@@ -23,7 +23,7 @@ struct ContentView: View {
     }
     
     var body: some View {
-        VStack {/*
+        VStack {
             HStack {
                 VStack(spacing: 20) {
                     Image("globe")
@@ -59,7 +59,7 @@ struct ContentView: View {
                     task?.cancel()
                     task = nil
                 }
-            }*/
+            }
             List(items) { item in
                 Text(verbatim: item.title)
             }
