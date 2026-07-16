@@ -58,28 +58,27 @@ public extension Fragment {
 }
 
 extension Fragment {
-    
-    static var logTag: LogTag { "Fragment" }
-    
+
+    static var logTag: String { "Fragment" }
+
+    static let log = try! JavaClass<AndroidUtil.Log>()
+
     static func log(_ string: String) {
-        try? AndroidLogger(tag: logTag, priority: .debug)
-            .log(string)
+        _ = Self.log.d(Self.logTag, string)
     }
-    
+
     static func logInfo(_ string: String) {
-        try? AndroidLogger(tag: logTag, priority: .info)
-            .log(string)
+        _ = Self.log.i(Self.logTag, string)
     }
-    
+
     static func logError(_ string: String) {
-        try? AndroidLogger(tag: logTag, priority: .error)
-            .log(string)
+        _ = Self.log.e(Self.logTag, string)
     }
-    
+
     func log(_ string: String) {
         Self.log(string)
     }
-    
+
     func logError(_ string: String) {
         Self.logError(string)
     }
