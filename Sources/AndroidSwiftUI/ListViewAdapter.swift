@@ -8,7 +8,7 @@
 import Foundation
 import AndroidKit
 
-@JavaClass("com.pureswift.swiftandroid.ListViewAdapter", extends: ListAdapter.self)
+@JavaClass("com.pureswift.swiftandroid.ListViewAdapter", extends: AndroidWidget.ListAdapter.self)
 open class ListViewAdapter: JavaObject {
     
     @JavaMethod

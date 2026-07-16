@@ -7,7 +7,7 @@
 
 import AndroidKit
 
-/// SwitUI View for Android `android.widget.ListView`
+/// SwiftUI `List` for Android, backed by a Jetpack Compose `LazyColumn`.
 public struct AndroidListView {
     
     let items: [String]
@@ -18,47 +18,20 @@ public struct AndroidListView {
 }
 
 extension AndroidListView: AndroidViewRepresentable {
-    
+
     /// Creates the view object and configures its initial state.
-    public func makeAndroidView(context: Self.Context) -> ListView {
-        createView(context: context.androidContext)
+    public func makeAndroidView(context: Self.Context) -> ComposeListView {
+        let adapter = ListViewAdapter(swiftObject: SwiftObject(ListViewAdapter.Context(items: items)))
+        return ComposeListView(context.androidContext, adapter)
     }
-    
+
     /// Updates the state of the specified view with new information from SwiftUI.
-    public func updateAndroidView(_ view: ListView, context: Self.Context) {
-        updateView(view)
+    public func updateAndroidView(_ view: ComposeListView, context: Self.Context) {
+        guard let adapter = view.getAdapter() else {
+            assertionFailure("Missing adapter")
+            return
+        }
+        adapter.context = ListViewAdapter.Context(items: items)
+        view.refresh()
     }
-}
-
-extension AndroidListView {
-    
-    func createView(context: AndroidContent.Context) -> AndroidWidget.ListView {
-        let view = AndroidWidget.ListView(context)
-        updateView(view)
-        return view
-    }
-    
-    func updateView(_ view: AndroidWidget.ListView) {
-        let layout = try! JavaClass<R.layout>()
-        let resource = layout.simple_list_item_1
-        let objects: [JavaObject?] = items.map { JavaString($0) }
-        let adapter = ArrayAdapter<JavaObject>(
-            context: view.getContext(),
-            resource: resource,
-            objects: objects
-        )
-        view.setAdapter(adapter.as(Adapter.self))
-    }
-}
-
-extension JavaClass<R.layout> {
-    
-    @JavaStaticField(isFinal: true)
-    public var list_view_row: Int32
-}
-
-extension JavaClass<R.id> {
-    
-    @JavaStaticField(isFinal: true)
-    public var textView: Int32
 }
