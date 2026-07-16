@@ -5,6 +5,7 @@
 //  Created by Alsey Coleman Miller on 6/9/25.
 //
 
+import Foundation
 import AndroidKit
 
 extension Image: AnyAndroidView {
