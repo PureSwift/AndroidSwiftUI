@@ -1,6 +1,5 @@
 #if canImport(AndroidSwiftUI)
 import AndroidSwiftUI
-typealias List = AndroidListView
 #else
 import SwiftUI
 #endif
@@ -23,47 +22,67 @@ struct ContentView: View {
     }
     
     var body: some View {
-        VStack {
-            HStack {
-                VStack(spacing: 20) {
-                    Image("globe")
-                    Text("Hello World")
-                    Text(verbatim: date.formatted(date: .numeric, time: .complete))
-                    if counter > 0 {
-                        HStack {
-                            Text("Counter:")
-                            Text(verbatim: counter.description)
-                        }
-                    }
-                    Button("Increment") {
-                        counter += 1
-                        if counter > 20 {
-                            counter = 0
-                        }
-                    }
-                }
-                .onAppear {
-                    task = Task {
-                        while true {
-                            do {
-                                try await Task.sleep(for: .seconds(1))
-                                date = Date()
+        NavigationView {
+            VStack {
+                HStack {
+                    VStack(spacing: 20) {
+                        Image("globe")
+                        Text("Hello World")
+                        Text(verbatim: date.formatted(date: .numeric, time: .complete))
+                        if counter > 0 {
+                            HStack {
+                                Text("Counter:")
+                                Text(verbatim: counter.description)
                             }
-                            catch {
-                                return
+                        }
+                        Button("Increment") {
+                            counter += 1
+                            if counter > 20 {
+                                counter = 0
                             }
                         }
                     }
+                    .onAppear {
+                        task = Task {
+                            while true {
+                                do {
+                                    try await Task.sleep(for: .seconds(1))
+                                    date = Date()
+                                }
+                                catch {
+                                    return
+                                }
+                            }
+                        }
+                    }
+                    .onDisappear {
+                        task?.cancel()
+                        task = nil
+                    }
                 }
-                .onDisappear {
-                    task?.cancel()
-                    task = nil
-                }
-            }
-            List(items) { item in
-                Text(verbatim: item.title)
+                NavigationLink("Show Items", destination: ItemsView(items: items))
             }
         }
+    }
+}
+
+struct ItemsView: View {
+
+    let items: [Item]
+
+    var body: some View {
+        List(items) { item in
+            NavigationLink(item.title, destination: DetailView(item: item))
+        }
+    }
+}
+
+struct DetailView: View {
+
+    let item: Item
+
+    var body: some View {
+        Text(verbatim: "Detail for \(item.title)")
     }
 }
 

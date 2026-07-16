@@ -18,6 +18,23 @@
 public final class NavigationContext: ObservableObject {
   @Published
   var destination = NavigationLinkDestination(EmptyView())
+
+  /// The stack of pushed destinations, not including the root content.
+  @Published
+  private(set) var path: [NavigationLinkDestination] = []
+
+  func push(_ destination: NavigationLinkDestination) {
+    path.append(destination)
+    self.destination = destination
+  }
+
+  @discardableResult
+  public func pop() -> Bool {
+    guard !path.isEmpty else { return false }
+    path.removeLast()
+    destination = path.last ?? NavigationLinkDestination(EmptyView())
+    return true
+  }
 }
 
 public struct NavigationView<Content>: _PrimitiveView where Content: View {
@@ -68,6 +85,11 @@ public struct _NavigationViewProxy<Content: View> {
   public var content: some View {
     subject.content
       .environmentObject(context)
+  }
+
+  /// The currently visible screen: the root `content` if the stack is empty, otherwise the top of `context.path`.
+  public var currentView: AnyView {
+    context.path.isEmpty ? AnyView(content) : AnyView(destination)
   }
 
   public var destination: some View {

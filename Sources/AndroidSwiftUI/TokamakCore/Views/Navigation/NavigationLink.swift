@@ -100,7 +100,7 @@ public struct _NavigationLinkProxy<Label, Destination> where Label: View, Destin
 
   public func activate() {
     if !isSelected {
-      subject.navigationContext.destination = subject.destination
+      subject.navigationContext.push(subject.destination)
     }
   }
 }

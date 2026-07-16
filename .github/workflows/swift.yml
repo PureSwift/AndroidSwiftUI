@@ -7,9 +7,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        swift: ['6.1']
+        swift: ['6.3.2']
         arch: ['aarch64', 'x86_64']
-        sdk: ['24', '28', '29']
+        sdk: ['28', '29', '30']
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -18,4 +18,4 @@ jobs:
         run: |
           brew install skiptools/skip/skip || (brew update && brew install skiptools/skip/skip)
           skip android sdk install --version ${{ matrix.swift }}
-          ANDROID_NDK_ROOT="" ANDROID_SDK_VERSION=${{ matrix.sdk }} skip android build --arch ${{ matrix.arch }} --android-api-level ${{ matrix.sdk }}
+          ANDROID_NDK_ROOT="" ANDROID_SDK_VERSION=${{ matrix.sdk }} skip android build --swift-version ${{ matrix.swift }} --arch ${{ matrix.arch }} --android-api-level ${{ matrix.sdk }}
