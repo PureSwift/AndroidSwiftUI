@@ -46,8 +46,8 @@ extension AndroidTarget {
         case .application:
             break
         case let .view(view):
-            break // TODO: Remove from parent
-        case let .fragment(fragment):
+            view.getParent()?.as(ViewGroup.self)?.removeView(view)
+        case .fragment:
             break // TODO:
         }
     }
