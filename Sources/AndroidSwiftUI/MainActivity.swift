@@ -7,7 +7,7 @@
 
 import Foundation
 import AndroidKit
-import AndroidJavaLang
+import JavaLang
 
 @JavaClass("com.pureswift.swiftandroid.MainActivity")
 open class MainActivity: AndroidApp.Activity {

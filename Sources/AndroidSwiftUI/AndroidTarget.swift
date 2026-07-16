@@ -11,8 +11,9 @@ import AndroidKit
 final class AndroidTarget: Target {
     
     enum Storage {
-        case application
+        case application // main activity
         case view(AndroidView.View)
+        case fragment(AndroidApp.Fragment)
     }
     
     let storage: Storage
@@ -29,6 +30,11 @@ final class AndroidTarget: Target {
         self.view = AnyView(view)
     }
     
+    init<V: View>(_ view: V, _ object: AndroidApp.Fragment) {
+        self.storage = .fragment(object)
+        self.view = AnyView(view)
+    }
+    
     static var application: AndroidTarget {
         .init(EmptyView(), .application)
     }
@@ -42,6 +48,8 @@ extension AndroidTarget {
             break
         case let .view(view):
             break // TODO: Remove from parent
+        case let .fragment(fragment):
+            break // TODO:
         }
     }
 }
