@@ -5,7 +5,6 @@
 //  Created by Alsey Coleman Miller on 6/8/25.
 //
 
-import JavaKit
 import AndroidKit
 
 final class AndroidRenderer: Renderer {
@@ -74,6 +73,10 @@ final class AndroidRenderer: Renderer {
                 viewGroup.addView(viewObject)
                 log("\(self).\(#function) \(#line): Add \(viewObject.getClass().getName()) to \(viewGroup.getClass().getName())")
                 return AndroidTarget(host.view, viewObject)
+            case .fragment:
+                // TODO: Mount into a fragment via FragmentManager/FragmentTransaction
+                log("\(self).\(#function) \(#line) Fragment mounting not yet implemented")
+                return nil
             }
         } else {
             
@@ -106,6 +109,9 @@ final class AndroidRenderer: Renderer {
         case .view(let view):
             log("\(self).\(#function) Update \(view.getClass().getName())")
             widget.updateAndroidView(view)
+        case .fragment:
+            // TODO: Update fragment
+            break
         }
     }
 
