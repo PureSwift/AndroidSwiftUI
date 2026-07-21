@@ -14,7 +14,7 @@ extension NavigationView: AndroidPrimitive {
         return AnyView(AndroidNavigationContainer(
             context: proxy.context,
             content: AnyView(proxy.content),
-            pushedView: proxy.pushedView
+            pushedViews: proxy.pushedViews
         ))
     }
 }
@@ -31,16 +31,16 @@ struct AndroidNavigationContainer {
     /// The root content, always mounted.
     let content: AnyView
 
-    /// The pushed screen stacked above the root, if any.
-    let pushedView: AnyView?
+    /// The pushed screens stacked above the root, in order from bottom to top.
+    let pushedViews: [AnyView]
 }
 
 extension AndroidNavigationContainer: ParentView {
 
     var children: [AnyView] {
         var views = [content]
-        if let pushedView {
-            views.append(AnyView(AndroidSheetOverlay(content: pushedView)))
+        views += pushedViews.map {
+            AnyView(AndroidSheetOverlay(content: $0, transition: .slide))
         }
         return views
     }
