@@ -106,7 +106,8 @@ extension AndroidButton: AndroidViewRepresentable {
 extension AndroidButton {
     
     func createView(context: AndroidContent.Context) -> AndroidWidget.Button {
-        let view = AndroidWidget.Button(context)
+        // Material Design button; requires a `Theme.Material3` derived application theme
+        let view = MaterialButton(context)
         updateView(view)
         // set on click listener
         let listener = ViewOnClickListener(action: action)
