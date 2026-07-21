@@ -39,7 +39,7 @@ extension AndroidSheetContainer: ParentView {
                 // dim and block interaction with the presenting content behind a partial sheet
                 views.append(AnyView(AndroidSheetScrim()))
             }
-            let sheet = AndroidSheetOverlay(content: content, detents: detents)
+            let sheet = AndroidSheetOverlay(content: content, detents: detents, transition: .cover)
                 .environment(\.dismiss, DismissAction { presenter.dismiss() })
                 .environment(\.isPresented, true)
             views.append(AnyView(sheet))
@@ -83,6 +83,15 @@ struct AndroidSheetOverlay {
     let content: AnyView
 
     var detents: Set<PresentationDetent> = []
+
+    var transition: AndroidViewTransition = .cover
+}
+
+extension AndroidSheetOverlay: AndroidTransitioningView { }
+
+extension AndroidSheetScrim: AndroidTransitioningView {
+
+    var transition: AndroidViewTransition { .fade }
 }
 
 extension AndroidSheetOverlay: ParentView {
