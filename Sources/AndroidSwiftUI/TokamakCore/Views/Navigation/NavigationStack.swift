@@ -26,15 +26,36 @@
 public struct NavigationStack<Root>: _PrimitiveView where Root: View {
   let root: Root
 
+  /// Bridge to the bound navigation path for value-based navigation, or `nil` when
+  /// navigation is driven by `NavigationLink(destination:)` pushes.
+  let pathStore: _AnyNavigationPathStore?
+
   @StateObject
   var context = NavigationContext()
 
   public init(@ViewBuilder root: () -> Root) {
     self.root = root()
+    pathStore = nil
   }
 
-  // `NavigationStack(path:)` and the `navigationDestination(for:destination:)` value-based
-  // navigation APIs are not yet supported.
+  /// Creates a navigation stack with heterogeneous navigation state that you can control.
+  ///
+  /// Appending to the bound `NavigationPath` pushes the destination registered with
+  /// `navigationDestination(for:destination:)` for the appended value's type; removing
+  /// values pops, as does the system back button.
+  public init(path: Binding<NavigationPath>, @ViewBuilder root: () -> Root) {
+    self.root = root()
+    pathStore = _AnyNavigationPathStore(path)
+  }
+
+  /// Creates a navigation stack with homogeneous navigation state that you can control.
+  public init<Data>(path: Binding<Data>, @ViewBuilder root: () -> Root)
+    where Data: MutableCollection & RandomAccessCollection & RangeReplaceableCollection,
+    Data.Element: Hashable
+  {
+    self.root = root()
+    pathStore = _AnyNavigationPathStore(path)
+  }
 }
 
 /// This is a helper type that works around absence of "package private" access control in Swift
@@ -43,7 +64,11 @@ public struct _NavigationStackProxy<Root: View> {
 
   public init(_ subject: NavigationStack<Root>) { self.subject = subject }
 
-  public var context: NavigationContext { subject.context }
+  public var context: NavigationContext {
+    // keep the context's bridge to the bound path current across renders
+    subject.context.pathStore = subject.pathStore
+    return subject.context
+  }
 
   public var content: some View {
     subject.root
@@ -54,6 +79,36 @@ public struct _NavigationStackProxy<Root: View> {
   /// otherwise the top of `context.path`.
   public var currentView: AnyView {
     context.path.isEmpty ? AnyView(content) : AnyView(destination)
+  }
+
+  /// The pushed destination to display above the root, if any, with the `dismiss`
+  /// environment action wired to pop.
+  public var pushedView: AnyView? {
+    let context = self.context
+    let pushed: AnyView
+    if let store = subject.pathStore, store.count() > 0 {
+      guard let value = store.last(), let view = context.destinationView(for: value) else {
+        // destination builders register during the root's body evaluation, so a
+        // pre-populated path cannot resolve on the very first render; retry once
+        // the content has rendered
+        if context.destinationBuilders.isEmpty {
+          Task { @MainActor [weak context] in
+            context?.objectWillChange.send()
+          }
+        }
+        return nil
+      }
+      pushed = AnyView(view.environmentObject(context))
+    } else if !context.path.isEmpty {
+      pushed = AnyView(destination)
+    } else {
+      return nil
+    }
+    return AnyView(
+      pushed
+        .environment(\.dismiss, DismissAction { context.pop() })
+        .environment(\.isPresented, true)
+    )
   }
 
   public var destination: some View {
