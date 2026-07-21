@@ -3,11 +3,16 @@ package com.pureswift.swiftandroid
 import android.content.Context
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -17,9 +22,12 @@ import com.pureswift.swiftandroid.ui.theme.SwiftAndroidTheme
 
 // SwiftUI `List` backed by a Jetpack Compose `LazyColumn`, sourcing its rows from a Swift-implemented `ListViewAdapter`.
 // `ComposeView` is final, so it's hosted as a child of this `FrameLayout` rather than subclassed.
+@OptIn(ExperimentalMaterial3Api::class)
 class ComposeListView(context: Context, private val adapter: ListViewAdapter) : FrameLayout(context) {
 
     private var version by mutableIntStateOf(0)
+    private var refreshing by mutableStateOf(false)
+    private var refreshRunnable by mutableStateOf<Runnable?>(null)
 
     init {
         val composeView = ComposeView(context)
@@ -31,22 +39,50 @@ class ComposeListView(context: Context, private val adapter: ListViewAdapter) : 
                 val items = remember(version) {
                     List(adapter.getCount()) { index -> adapter.getItem(index) as String }
                 }
-                LazyColumn {
-                    items(items.size) { index ->
-                        Text(
-                            text = items[index],
-                            modifier = Modifier.padding(16.dp)
-                        )
+                val refreshAction = refreshRunnable
+                if (refreshAction != null) {
+                    PullToRefreshBox(
+                        isRefreshing = refreshing,
+                        onRefresh = {
+                            refreshing = true
+                            refreshAction.run()
+                        }
+                    ) {
+                        Rows(items, Modifier.fillMaxSize())
                     }
+                } else {
+                    Rows(items, Modifier)
                 }
             }
         }
         addView(composeView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
 
+    @Composable
+    private fun Rows(items: List<String>, modifier: Modifier) {
+        LazyColumn(modifier = modifier) {
+            items(items.size) { index ->
+                Text(
+                    text = items[index],
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    }
+
     fun getAdapter(): ListViewAdapter = adapter
 
     fun refresh() {
         version++
+    }
+
+    // Sets the action performed by the pull to refresh gesture, or null to disable the gesture.
+    fun setOnRefresh(action: Runnable?) {
+        refreshRunnable = action
+    }
+
+    // Hides the refresh indicator once the refresh action has completed.
+    fun endRefreshing() {
+        refreshing = false
     }
 }
