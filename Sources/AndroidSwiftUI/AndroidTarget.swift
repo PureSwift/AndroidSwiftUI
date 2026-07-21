@@ -12,7 +12,7 @@ final class AndroidTarget: Target {
     enum Storage {
         case application // main activity
         case view(AndroidView.View)
-        case fragment(AndroidApp.Fragment)
+        case fragment(AndroidApp.Fragment, container: AndroidView.View)
     }
     
     let storage: Storage
@@ -29,8 +29,8 @@ final class AndroidTarget: Target {
         self.view = AnyView(view)
     }
     
-    init<V: View>(_ view: V, _ object: AndroidApp.Fragment) {
-        self.storage = .fragment(object)
+    init<V: View>(_ view: V, _ object: AndroidApp.Fragment, container: AndroidView.View) {
+        self.storage = .fragment(object, container: container)
         self.view = AnyView(view)
     }
     
@@ -47,8 +47,12 @@ extension AndroidTarget {
             break
         case let .view(view):
             view.getParent()?.as(ViewGroup.self)?.removeView(view)
-        case .fragment:
-            break // TODO:
+        case let .fragment(fragment, container):
+            if let transaction = fragment.getFragmentManager()?.beginTransaction() {
+                _ = transaction.remove(fragment)
+                _ = transaction.commitAllowingStateLoss()
+            }
+            container.getParent()?.as(ViewGroup.self)?.removeView(container)
         }
     }
 }
