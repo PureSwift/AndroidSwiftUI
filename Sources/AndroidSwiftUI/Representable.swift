@@ -32,6 +32,39 @@ public struct AndroidRepresentableContext <Representable: AndroidRepresentable> 
 
     /// The Android context of the enclosing activity.
     public let androidContext: AndroidContent.Context
+
+    /// The environment of the enclosing view hierarchy.
+    public let environment: EnvironmentValues
+
+    /// The current transaction.
+    public let transaction: Transaction
+
+    internal init(
+        coordinator: Representable.Coordinator,
+        androidContext: AndroidContent.Context,
+        environment: EnvironmentValues = RepresentableHostContext.environment,
+        transaction: Transaction = RepresentableHostContext.transaction
+    ) {
+        self.coordinator = coordinator
+        self.androidContext = androidContext
+        self.environment = environment
+        self.transaction = transaction
+    }
+}
+
+/// Host state captured by the renderer before invoking representable entry points,
+/// so per-view environment and transaction can flow into `AndroidRepresentableContext`
+/// without changing the type-erased renderer protocols.
+internal enum RepresentableHostContext {
+
+    static var environment: EnvironmentValues = .defaultEnvironment
+
+    static var transaction: Transaction = .init(animation: nil)
+
+    static func update<R: Renderer>(_ host: MountedHostView<R>) {
+        environment = host.environmentValues
+        transaction = host.transaction
+    }
 }
 
 internal extension AndroidRepresentable {
