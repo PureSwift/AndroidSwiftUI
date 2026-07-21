@@ -37,6 +37,12 @@ class MountedCompositeElement<R: Renderer>: MountedElement<R> {
    */
   var persistentSubscriptions = [AnyCancellable]()
 
+  /** The number of consecutive invalidations triggered by mutations of observed state made from
+    within this element's own `body`. Reset whenever the element is invalidated from outside a
+    render pass; used by the reconciler to break infinite self-invalidation loops.
+   */
+  var consecutiveInBodyInvalidations = 0
+
   init<A: App>(
     _ app: A,
     _ parentTarget: R.TargetType,
