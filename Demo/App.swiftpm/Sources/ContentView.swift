@@ -6,90 +6,61 @@ import SwiftUI
 
 import Foundation
 
+/// Gallery of playground screens, one per supported SwiftUI feature.
 struct ContentView: View {
-    
-    @State
-    var counter = 1
-    
-    @State
-    var date = Date()
-    
-    @State
-    var task: Task<Void, Never>?
-    
-    var items: [Item] {
-        (0 ..< counter).map { Item(id: $0) }
-    }
-    
+
     var body: some View {
-        NavigationView {
-            VStack {
-                HStack {
-                    VStack(spacing: 20) {
-                        Image("globe")
-                        Text("Hello World")
-                        Text(verbatim: date.formatted(date: .numeric, time: .complete))
-                        if counter > 0 {
-                            HStack {
-                                Text("Counter:")
-                                Text(verbatim: counter.description)
-                            }
-                        }
-                        Button("Increment") {
-                            counter += 1
-                            if counter > 20 {
-                                counter = 0
-                            }
-                        }
-                    }
-                    .onAppear {
-                        task = Task {
-                            while true {
-                                do {
-                                    try await Task.sleep(for: .seconds(1))
-                                    date = Date()
-                                }
-                                catch {
-                                    return
-                                }
-                            }
-                        }
-                    }
-                    .onDisappear {
-                        task?.cancel()
-                        task = nil
-                    }
-                }
-                NavigationLink("Show Items", destination: ItemsView(items: items))
+        NavigationStack {
+            List(GalleryScreen.allCases) { screen in
+                NavigationLink(screen.title, destination: screen.destination)
             }
         }
     }
 }
 
-struct ItemsView: View {
+/// The catalog of playground screens.
+///
+/// Each case demonstrates one feature area. This enum doubles as the coverage
+/// checklist for what the framework currently supports.
+enum GalleryScreen: String, CaseIterable, Identifiable {
 
-    let items: [Item]
+    case text
+    case buttons
+    case stacks
+    case list
+    case navigation
+    case sheets
+    case tabs
+    case observation
+    case state
 
-    var body: some View {
-        List(items) { item in
-            NavigationLink(item.title, destination: DetailView(item: item))
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .text: return "Text"
+        case .buttons: return "Buttons"
+        case .stacks: return "Stacks & Alignment"
+        case .list: return "List & Refresh"
+        case .navigation: return "Navigation"
+        case .sheets: return "Sheets"
+        case .tabs: return "Tabs"
+        case .observation: return "Observation"
+        case .state: return "State"
+        }
+    }
+
+    var destination: AnyView {
+        switch self {
+        case .text: return AnyView(TextScreen())
+        case .buttons: return AnyView(ButtonScreen())
+        case .stacks: return AnyView(StacksScreen())
+        case .list: return AnyView(ListScreen())
+        case .navigation: return AnyView(NavigationScreen())
+        case .sheets: return AnyView(SheetScreen())
+        case .tabs: return AnyView(TabScreen())
+        case .observation: return AnyView(ObservationScreen())
+        case .state: return AnyView(StateScreen())
         }
     }
 }
-
-struct DetailView: View {
-
-    let item: Item
-
-    var body: some View {
-        Text(verbatim: "Detail for \(item.title)")
-    }
-}
-
-struct Item: Identifiable {
-    let id: Int
-    var title: String {
-        "Item \(id + 1)"
-    }
-}
-    
