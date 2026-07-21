@@ -10,21 +10,27 @@ import AndroidKit
 extension NavigationView: AndroidPrimitive {
 
     var renderedBody: AnyView {
-        AnyView(AndroidNavigationContainer(proxy: _NavigationViewProxy(self)))
+        let proxy = _NavigationViewProxy(self)
+        return AnyView(AndroidNavigationContainer(context: proxy.context, currentView: proxy.currentView))
     }
 }
 
-/// Native container for `NavigationView`. Hosts the currently visible screen (root content or the
-/// top of the navigation stack) as a mounted child, and intercepts the system back button to pop.
-struct AndroidNavigationContainer<Content: View> {
+/// Native container for `NavigationView` and `NavigationStack`. Hosts the currently visible screen
+/// (root content or the top of the navigation stack) as a mounted child, and intercepts the system
+/// back button to pop.
+struct AndroidNavigationContainer {
 
-    let proxy: _NavigationViewProxy<Content>
+    /// The navigation state shared with the `NavigationLink`s of the hosted screen.
+    let context: NavigationContext
+
+    /// The screen to display, provided by the container's proxy.
+    let currentView: AnyView
 }
 
 extension AndroidNavigationContainer: ParentView {
 
     var children: [AnyView] {
-        [proxy.currentView]
+        [currentView]
     }
 }
 
@@ -33,9 +39,9 @@ extension AndroidNavigationContainer: AndroidViewRepresentable {
     typealias Coordinator = Void
 
     func makeAndroidView(context: Self.Context) -> BackHandlerView {
-        let path = proxy.context
+        let navigationContext = self.context
         let view = BackHandlerView(context.androidContext) {
-            path.pop()
+            navigationContext.pop()
         }
         updateView(view)
         return view
@@ -49,6 +55,6 @@ extension AndroidNavigationContainer: AndroidViewRepresentable {
 private extension AndroidNavigationContainer {
 
     func updateView(_ view: BackHandlerView) {
-        view.setBackHandlerEnabled(!proxy.context.path.isEmpty)
+        view.setBackHandlerEnabled(!context.path.isEmpty)
     }
 }
