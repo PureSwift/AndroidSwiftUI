@@ -18,10 +18,20 @@ open class Fragment: AndroidApp.Fragment {
 }
 
 public extension Fragment {
-    
+
     struct Callback {
-        
+
         var onViewCreated: ((AndroidView.View, AndroidOS.Bundle?) -> ())?
+
+        var onStart: (() -> ())?
+
+        var onResume: (() -> ())?
+
+        var onPause: (() -> ())?
+
+        var onStop: (() -> ())?
+
+        var onDestroyView: (() -> ())?
     }
 }
 
@@ -29,7 +39,7 @@ public extension Fragment {
 extension Fragment {
     
     @JavaMethod
-    func onViewCreated(
+    func onViewCreatedSwift(
         view: AndroidView.View?,
         savedInstanceState: AndroidOS.Bundle?
     ) {
@@ -42,6 +52,36 @@ extension Fragment {
             return
         }
         onViewCreated(view, savedInstanceState)
+    }
+
+    @JavaMethod
+    func onStartSwift() {
+        log("\(self).\(#function)")
+        callback.onStart?()
+    }
+
+    @JavaMethod
+    func onResumeSwift() {
+        log("\(self).\(#function)")
+        callback.onResume?()
+    }
+
+    @JavaMethod
+    func onPauseSwift() {
+        log("\(self).\(#function)")
+        callback.onPause?()
+    }
+
+    @JavaMethod
+    func onStopSwift() {
+        log("\(self).\(#function)")
+        callback.onStop?()
+    }
+
+    @JavaMethod
+    func onDestroyViewSwift() {
+        log("\(self).\(#function)")
+        callback.onDestroyView?()
     }
 }
 
