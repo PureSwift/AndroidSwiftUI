@@ -31,7 +31,11 @@ extension AndroidSheetContainer: ParentView {
     var children: [AnyView] {
         var views = [AnyView(presenter.content)]
         if presenter.isSheetPresented {
-            views.append(AnyView(AndroidSheetOverlay(content: presenter.sheetContent())))
+            let presenter = self.presenter
+            let sheet = AndroidSheetOverlay(content: presenter.sheetContent())
+                .environment(\.dismiss, DismissAction { presenter.dismiss() })
+                .environment(\.isPresented, true)
+            views.append(AnyView(sheet))
         }
         return views
     }
