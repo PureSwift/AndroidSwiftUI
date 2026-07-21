@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 
 // Framework fragment whose view creation and lifecycle are forwarded to a Swift implementation.
-@Suppress("DEPRECATION")
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class Fragment(private val swiftObject: SwiftObject?) : android.app.Fragment() {
 
     init {
