@@ -138,12 +138,15 @@ public final class StackReconciler<R: Renderer> {
     transaction: Transaction
   ) {
     let shouldSchedule = queuedRerenders.isEmpty
-    queuedRerenders.insert(
-      .init(
-        element: mountedElement,
-        transaction: transaction
-      )
+    let rerender = Rerender(
+      element: mountedElement,
+      transaction: transaction
     )
+    let (inserted, existing) = queuedRerenders.insert(rerender)
+    // when coalescing, an animated transaction takes precedence over a non-animated one
+    if !inserted, existing.transaction.animation == nil, transaction.animation != nil {
+      queuedRerenders.update(with: rerender)
+    }
 
     guard shouldSchedule else { return }
 
@@ -209,7 +212,7 @@ public final class StackReconciler<R: Renderer> {
     // instance property
     observed.objectWillChange.sink { [weak self, weak compositeElement] _ in
       if let compositeElement = compositeElement {
-        self?.queueUpdate(for: compositeElement, transaction: .init(animation: nil))
+        self?.scheduleInvalidation(of: compositeElement)
       }
     }.store(in: &compositeElement.transientSubscriptions)
   }
@@ -258,26 +261,83 @@ public final class StackReconciler<R: Renderer> {
     return compositeElement[keyPath: keyPath]
   }
 
+  /** The number of consecutive in-body self-invalidations after which further updates for an
+   element are suppressed to break an infinite render loop.
+   */
+  private static var inBodyInvalidationLimit: Int { 5 }
+
+  /** A stack of elements whose bodies are currently being evaluated. Used to detect mutations
+   of observed state made from within an element's own `body`.
+   */
+  private var elementsBeingRendered = [MountedCompositeElement<R>]()
+
+  private func isRendering(_ element: MountedCompositeElement<R>) -> Bool {
+    elementsBeingRendered.contains { $0 === element }
+  }
+
+  /** Schedules a re-render of `element` in response to a change of observed state.
+
+   Called synchronously from the mutating context *before* the new value is stored, while any
+   enclosing `withTransaction` / `withAnimation` scope is still active — so the active
+   transaction is captured here and carried into the update, and the actual re-render is
+   deferred through the scheduler to both observe the new value and keep all reconciler state
+   on the main thread.
+
+   Mutating observed state from within the element's own `body` is unsupported: every render
+   pass would re-trigger the mutation and spin an infinite update loop. Such self-invalidations
+   are counted, and once `inBodyInvalidationLimit` consecutive occurrences are reached further
+   updates are dropped (the element may then stop observing changes until its next external
+   update, which re-arms tracking).
+   */
+  private func scheduleInvalidation(of element: MountedCompositeElement<R>) {
+    let transaction = Transaction._active ?? .init(animation: nil)
+    if isRendering(element) {
+      element.consecutiveInBodyInvalidations += 1
+      if element.consecutiveInBodyInvalidations == 1 {
+        print(
+          """
+          AndroidSwiftUI: Modifying observed state during view update. \
+          This is unsupported and may cause repeated re-renders.
+          """
+        )
+      }
+      if element.consecutiveInBodyInvalidations >= Self.inBodyInvalidationLimit {
+        if element.consecutiveInBodyInvalidations == Self.inBodyInvalidationLimit {
+          print(
+            """
+            AndroidSwiftUI: A view invalidated itself from its own body \
+            \(Self.inBodyInvalidationLimit) consecutive times; dropping the update to break \
+            the render loop.
+            """
+          )
+        }
+        return
+      }
+    } else {
+      element.consecutiveInBodyInvalidations = 0
+    }
+    scheduler { [weak self, weak element] in
+      guard let self = self, let element = element else { return }
+      self.queueUpdate(for: element, transaction: transaction)
+    }
+  }
+
   /** Evaluates `body` while tracking every `Observable` property read by it, scheduling an
    update of `compositeElement` when any of those properties changes. Tracking is armed
    again on every render, as `withObservationTracking` only reports the first change.
 
    This is the `Observation` counterpart of `setupTransientSubscription`, and it funnels into
-   the exact same `queueUpdate` invalidation path used by `ObservableObject`.
+   the exact same `scheduleInvalidation` path used by `ObservableObject`.
    */
   private func withObservationTracking<T>(
     of compositeElement: MountedCompositeElement<R>,
     _ body: () -> T
   ) -> T {
-    Observation.withObservationTracking(body) { [weak self, weak compositeElement] in
-      // `onChange` is called synchronously on whichever thread mutated the object, and it is
-      // called *before* the new value is stored. Hopping onto the renderer's scheduler both
-      // keeps all reconciler state on the main thread (as with every other update path) and
-      // guarantees that the re-render observes the new value.
+    elementsBeingRendered.append(compositeElement)
+    defer { elementsBeingRendered.removeLast() }
+    return Observation.withObservationTracking(body) { [weak self, weak compositeElement] in
       guard let self = self, let compositeElement = compositeElement else { return }
-      self.scheduler {
-        self.queueUpdate(for: compositeElement, transaction: .init(animation: nil))
-      }
+      self.scheduleInvalidation(of: compositeElement)
     }
   }
 
