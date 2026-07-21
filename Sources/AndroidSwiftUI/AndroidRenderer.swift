@@ -60,6 +60,8 @@ final class AndroidRenderer: Renderer {
             case .application:
                 // root view, add to main activity
                 let viewObject = anyView.createAndroidView(context)
+                // inset the content from the system bars when drawing edge to edge
+                viewObject.setFitsSystemWindows(true)
                 activity.setRootView(viewObject)
                 log("\(self).\(#function) \(#line): Created root view \(viewObject.getClass().getName())")
                 return AndroidTarget(host.view, viewObject)
@@ -244,6 +246,8 @@ private extension AndroidRenderer {
         container.setId(Self.viewClass.generateViewId())
         switch parent.storage {
         case .application:
+            // inset the content from the system bars when drawing edge to edge
+            container.setFitsSystemWindows(true)
             activity.setRootView(container)
         case .view(let parentView):
             guard parentView.is(ViewGroup.self), let viewGroup = parentView.as(ViewGroup.self) else {
