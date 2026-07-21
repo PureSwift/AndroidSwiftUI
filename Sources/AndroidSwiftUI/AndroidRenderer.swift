@@ -191,7 +191,11 @@ final class AndroidRenderer: Renderer {
      this renderer.
      */
     func primitiveBody(for view: Any) -> AnyView? {
-        (view as? AndroidPrimitive)?.renderedBody
+        // `as?` sees through `Optional`, but an optional view must render through its own
+        // `body` so the wrapped view is mounted as a child element with its dynamic
+        // properties injected; check the dynamic type to match `isPrimitiveView`
+        guard type(of: view) is AndroidPrimitive.Type else { return nil }
+        return (view as? AndroidPrimitive)?.renderedBody
     }
 
     /** Returns `true` if a given view type is a primitive view that should be deferred to this
