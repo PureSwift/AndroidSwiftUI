@@ -21,6 +21,11 @@ public struct EnvironmentValues: CustomStringConvertible {
 
   private var values: [ObjectIdentifier: Any] = [:]
 
+  /// Storage for `Observable` objects injected with `View.environment(_:)`, keyed by the
+  /// `ObjectIdentifier` of their type. Kept separate from `values` so that `EnvironmentKey`
+  /// keyed values and `Observable` objects can never collide.
+  private var observableObjects: [ObjectIdentifier: AnyObject] = [:]
+
   public init() {}
 
   public subscript<K>(key: K.Type) -> K.Value where K: EnvironmentKey {
@@ -44,10 +49,22 @@ public struct EnvironmentValues: CustomStringConvertible {
     }
   }
 
+  subscript(observable key: ObjectIdentifier) -> AnyObject? {
+    get {
+      observableObjects[key]
+    }
+    set {
+      observableObjects[key] = newValue
+    }
+  }
+
   @_spi(TokamakCore)
   public mutating func merge(_ other: Self?) {
     if let other = other {
       values.merge(other.values) { _, new in
+        new
+      }
+      observableObjects.merge(other.observableObjects) { _, new in
         new
       }
     }

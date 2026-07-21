@@ -84,12 +84,35 @@ extension VStack: AndroidPrimitive {
 }
 
 extension HStack: AndroidPrimitive {
-    
+
     var renderedBody: AnyView {
         let proxy = _HStackProxy(self)
         let gravity = proxy.subject._alignment.vertical.gravity
         let linearLayout = AndroidLinearLayout(orientation: .horizontal, gravity: gravity) {
             proxy.subject.content
+        }
+        return AnyView(linearLayout)
+    }
+}
+
+// The lazy stacks render their children eagerly, onto the same `LinearLayout` used by
+// `VStack` / `HStack`. Laziness is a performance optimisation, not a semantic requirement.
+
+extension LazyVStack: AndroidPrimitive {
+
+    var renderedBody: AnyView {
+        let linearLayout = AndroidLinearLayout(orientation: .vertical, gravity: alignment.gravity) {
+            content
+        }
+        return AnyView(linearLayout)
+    }
+}
+
+extension LazyHStack: AndroidPrimitive {
+
+    var renderedBody: AnyView {
+        let linearLayout = AndroidLinearLayout(orientation: .horizontal, gravity: alignment.gravity) {
+            content
         }
         return AnyView(linearLayout)
     }
