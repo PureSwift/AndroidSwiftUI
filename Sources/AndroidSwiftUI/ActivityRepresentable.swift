@@ -20,10 +20,18 @@ public protocol AndroidActivityRepresentable: AndroidSwiftUI.View, AnyAndroidVie
 
     /// Creates the intent used to start the activity.
     func makeIntent(context: Self.Context) -> AndroidContent.Intent
+
+    /// Called when the activity started by this representable finishes with a result.
+    func onActivityResult(_ result: ActivityResult, coordinator: Self.Coordinator)
 }
 
 /// Contextual information about the state of the system that you use to create the activity intent.
 public typealias AndroidActivityRepresentableContext <Representable: AndroidActivityRepresentable> = AndroidRepresentableContext<Representable>
+
+public extension AndroidActivityRepresentable {
+
+    func onActivityResult(_ result: ActivityResult, coordinator: Self.Coordinator) { }
+}
 
 extension AndroidActivityRepresentable {
 
@@ -34,7 +42,14 @@ extension AndroidActivityRepresentable {
         // placeholder view occupies this position in the view hierarchy
         let placeholder = AndroidView.View(context)
         RepresentableCoordinatorStorage.store(coordinator, for: placeholder)
-        context.startActivity(intent)
+        if let activity = context.as(AndroidApp.Activity.self) {
+            let requestCode = ActivityResultRegistry.register(for: placeholder) { result in
+                self.onActivityResult(result, coordinator: coordinator)
+            }
+            Self.activityCompat.startActivityForResult(activity, intent, requestCode, nil)
+        } else {
+            context.startActivity(intent)
+        }
         return placeholder
     }
 
@@ -43,6 +58,14 @@ extension AndroidActivityRepresentable {
     }
 
     public func removeAndroidView(_ view: AndroidView.View) {
+        ActivityResultRegistry.unregister(for: view)
         RepresentableCoordinatorStorage.remove(for: view)
+    }
+}
+
+private extension AndroidActivityRepresentable {
+
+    static var activityCompat: JavaClass<ActivityCompat> {
+        try! JavaClass<ActivityCompat>()
     }
 }
