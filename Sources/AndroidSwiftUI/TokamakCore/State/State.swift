@@ -25,19 +25,31 @@ protocol WritableValueStorage: ValueStorage {
 
 @propertyWrapper
 public struct State<Value>: DynamicProperty {
-  private let initialValue: Value
+  private let initialValue: () -> Value
 
-  var anyInitialValue: Any { initialValue }
+  var anyInitialValue: Any { initialValue() }
 
   var getter: (() -> Any)?
   var setter: ((Any, Transaction) -> ())?
 
-  public init(wrappedValue value: Value) {
+  /// Creates a state property that stores an initial wrapped value.
+  ///
+  /// The initial value expression is captured and evaluated lazily, at most once per view
+  /// lifetime — when the view is first mounted — rather than every time the enclosing view
+  /// struct is constructed. This matches current SwiftUI behavior, where classes stored in
+  /// `State` are initialized only once per view lifetime, so re-renders of the parent no
+  /// longer construct and discard fresh instances.
+  public init(wrappedValue value: @autoclosure @escaping () -> Value) {
+    initialValue = value
+  }
+
+  /// Creates a state property that stores an initial value.
+  public init(initialValue value: @autoclosure @escaping () -> Value) {
     initialValue = value
   }
 
   public var wrappedValue: Value {
-    get { getter?() as? Value ?? initialValue }
+    get { getter?() as? Value ?? initialValue() }
     nonmutating set { setter?(newValue, Transaction._active ?? .init(animation: nil)) }
   }
 

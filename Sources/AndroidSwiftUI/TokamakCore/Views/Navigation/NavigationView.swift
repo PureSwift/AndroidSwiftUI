@@ -23,13 +23,47 @@ public final class NavigationContext: ObservableObject {
   @Published
   private(set) var path: [NavigationLinkDestination] = []
 
+  /// Destination builders registered with `navigationDestination(for:destination:)`,
+  /// keyed by the type of the value they present. Not published: builders are
+  /// (re)registered during body evaluation and must not invalidate the view.
+  var destinationBuilders: [ObjectIdentifier: (AnyHashable) -> AnyView] = [:]
+
+  /// Bridge to the path binding of a value-driven `NavigationStack(path:)`, or `nil`
+  /// when navigation is driven by pushed destination views. Not published: the owning
+  /// stack refreshes it on every render.
+  var pathStore: _AnyNavigationPathStore?
+
+  /// Whether any destination is currently pushed, by either navigation mechanism.
+  var hasPushedDestinations: Bool {
+    !path.isEmpty || (pathStore?.count() ?? 0) > 0
+  }
+
   func push(_ destination: NavigationLinkDestination) {
     path.append(destination)
     self.destination = destination
   }
 
+  /// Pushes a value: appends to the path binding when one is bound, otherwise
+  /// resolves the registered destination and pushes the resulting view.
+  func push(value: AnyHashable) {
+    if let pathStore {
+      pathStore.append(value)
+    } else if let view = destinationView(for: value) {
+      push(NavigationLinkDestination(view))
+    }
+  }
+
+  /// Resolves the destination view registered for the type of `value`.
+  func destinationView(for value: AnyHashable) -> AnyView? {
+    destinationBuilders[ObjectIdentifier(type(of: value.base))]?(value)
+  }
+
   @discardableResult
   public func pop() -> Bool {
+    if let pathStore, pathStore.count() > 0 {
+      pathStore.removeLast()
+      return true
+    }
     guard !path.isEmpty else { return false }
     path.removeLast()
     destination = path.last ?? NavigationLinkDestination(EmptyView())
@@ -90,6 +124,18 @@ public struct _NavigationViewProxy<Content: View> {
   /// The currently visible screen: the root `content` if the stack is empty, otherwise the top of `context.path`.
   public var currentView: AnyView {
     context.path.isEmpty ? AnyView(content) : AnyView(destination)
+  }
+
+  /// The pushed destination to display above the root, if any, with the `dismiss`
+  /// environment action wired to pop.
+  public var pushedView: AnyView? {
+    guard !context.path.isEmpty else { return nil }
+    let context = self.context
+    return AnyView(
+      destination
+        .environment(\.dismiss, DismissAction { context.pop() })
+        .environment(\.isPresented, true)
+    )
   }
 
   public var destination: some View {

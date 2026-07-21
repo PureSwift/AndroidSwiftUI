@@ -41,10 +41,9 @@ public extension View {
     /// Marks this view as refreshable.
     ///
     /// The action is stored in the `refresh` environment value, exactly like SwiftUI, so views that
-    /// read `@Environment(\.refresh)` behave the same on Android. Note that the pull to refresh
-    /// *gesture* is not wired up on Android yet: `androidx.swiperefreshlayout.widget.SwipeRefreshLayout`
-    /// is not part of the Java bindings this package depends on, so nothing currently invokes the
-    /// action automatically. Code that invokes `EnvironmentValues.refresh` explicitly works today.
+    /// read `@Environment(\.refresh)` behave the same on Android. `List` reads this value and
+    /// performs the action with a Material pull to refresh gesture, hiding the refresh indicator
+    /// once the async action completes.
     func refreshable(action: @escaping @Sendable () async -> ()) -> some View {
         environment(\.refresh, RefreshAction(action))
     }

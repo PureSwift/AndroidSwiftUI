@@ -6,43 +6,37 @@
 //
 
 import AndroidKit
-import JavaLang
-/*
-@JavaClass("com.pureswift.swiftandroid.Runnable", extends: AndroidJavaLang.Runnable.self)
+
+/// Java `Runnable` backed by a Swift closure.
+@JavaClass("com.pureswift.swiftandroid.Runnable")
 open class Runnable: JavaObject {
-    
+
     public typealias Block = () -> ()
-    
+
     @JavaMethod
     @_nonoverride public convenience init(block: SwiftObject?, environment: JNIEnvironment? = nil)
-    
-    public convenience init(_ block: @escaping () -> Void, environment: JNIEnvironment? = nil) {
-        let object = SwiftObject(block, environment: environment)
-        self.init(block: object, environment: environment)
-    }
+
+    @JavaMethod
+    public func getBlock() -> SwiftObject?
 }
 
 @JavaImplementation("com.pureswift.swiftandroid.Runnable")
 extension Runnable {
-    
+
     @JavaMethod
-    func run() {
+    public func run() {
+        guard let block = getBlock()?.valueObject().value as? Block else {
+            assertionFailure("Missing block")
+            return
+        }
         block()
     }
 }
 
-extension Runnable {
-    
-    static var logTag: String { "Runnable" }
-    
-    static let log = try! JavaClass<AndroidUtil.Log>()
-    
-    func log(_ string: String) {
-        _ = Self.log.d(Self.logTag, string)
-    }
-    
-    func logError(_ string: String) {
-        _ = Self.log.e(Self.logTag, string)
+public extension Runnable {
+
+    convenience init(_ block: @escaping Block, environment: JNIEnvironment? = nil) {
+        let object = SwiftObject(block, environment: environment)
+        self.init(block: object, environment: environment)
     }
 }
-*/

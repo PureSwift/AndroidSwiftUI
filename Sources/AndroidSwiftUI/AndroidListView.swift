@@ -22,7 +22,9 @@ extension AndroidListView: AndroidViewRepresentable {
     /// Creates the view object and configures its initial state.
     public func makeAndroidView(context: Self.Context) -> ComposeListView {
         let adapter = ListViewAdapter(swiftObject: SwiftObject(ListViewAdapter.Context(items: items)))
-        return ComposeListView(context.androidContext, adapter)
+        let view = ComposeListView(context.androidContext, adapter)
+        updateRefreshAction(for: view, context: context)
+        return view
     }
 
     /// Updates the state of the specified view with new information from SwiftUI.
@@ -32,6 +34,25 @@ extension AndroidListView: AndroidViewRepresentable {
             return
         }
         adapter.context = ListViewAdapter.Context(items: items)
+        updateRefreshAction(for: view, context: context)
         view.refresh()
+    }
+}
+
+private extension AndroidListView {
+
+    /// Wires the `refresh` environment value to the pull to refresh gesture.
+    func updateRefreshAction(for view: ComposeListView, context: Self.Context) {
+        guard let action = context.environment.refresh else {
+            view.setOnRefresh(nil)
+            return
+        }
+        let runnable = Runnable {
+            Task { @MainActor in
+                await action()
+                view.endRefreshing()
+            }
+        }
+        view.setOnRefresh(runnable)
     }
 }

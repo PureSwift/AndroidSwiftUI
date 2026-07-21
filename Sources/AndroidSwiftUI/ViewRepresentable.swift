@@ -5,66 +5,102 @@
 //  Created by Alsey Coleman Miller on 6/8/25.
 //
 
+import Foundation
 import AndroidKit
 
 /// A wrapper for an Android view that you use to integrate that view into your SwiftUI view hierarchy.
-public protocol AndroidViewRepresentable: AndroidSwiftUI.View, AnyAndroidView {
-    
+public protocol AndroidViewRepresentable: AndroidSwiftUI.View, AnyAndroidView, AndroidRepresentable {
+
     /// The type of view to present.
     associatedtype AndroidViewType: AndroidView.View
-    
-    associatedtype Coordinator
-    
-    typealias Context = AndroidViewRepresentableContext<Self>
-    
+
+    typealias Context = AndroidRepresentableContext<Self>
+
     /// Creates the view object and configures its initial state.
     func makeAndroidView(context: Self.Context) -> Self.AndroidViewType
-    
+
     /// Updates the state of the specified view with new information from SwiftUI.
     func updateAndroidView(_ view: Self.AndroidViewType, context: Self.Context)
-    
-    /// Creates the custom instance that you use to communicate changes from your view to other parts of your SwiftUI interface.
-    func makeCoordinator() -> Self.Coordinator
-}
 
-public extension AndroidViewRepresentable where Self.Coordinator == Void {
-    
-    func makeCoordinator() { }
+    /// Cleans up the presented view (and coordinator) in anticipation of its removal.
+    static func dismantleAndroidView(_ view: Self.AndroidViewType, coordinator: Self.Coordinator)
+
+    /// Returns the preferred size of the view in points, or `nil` to defer to the parent's layout.
+    ///
+    /// The returned size is converted to pixels using the display density and applied
+    /// as the view's layout parameters.
+    func sizeThatFits(_ proposal: ProposedViewSize, view: Self.AndroidViewType, context: Self.Context) -> CGSize?
 }
 
 /// Contextual information about the state of the system that you use to create and update your Android view.
-public struct AndroidViewRepresentableContext <Content: View> {
-    
-    let androidContext: AndroidContent.Context
+public typealias AndroidViewRepresentableContext <Representable: AndroidViewRepresentable> = AndroidRepresentableContext<Representable>
+
+public extension AndroidViewRepresentable {
+
+    static func dismantleAndroidView(_ view: Self.AndroidViewType, coordinator: Self.Coordinator) { }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, view: Self.AndroidViewType, context: Self.Context) -> CGSize? { nil }
 }
 
-extension AndroidViewRepresentable where Self: AnyAndroidView {
-    
+extension AndroidViewRepresentable {
+
     public func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
-        let context = Self.Context(androidContext: context)
+        let coordinator = makeCoordinator()
+        let context = Self.Context(coordinator: coordinator, androidContext: context)
         let view = makeAndroidView(context: context)
+        RepresentableCoordinatorStorage.store(coordinator, for: view)
+        if let size = sizeThatFits(.unspecified, view: view, context: context) {
+            view.setLayoutSize(size)
+        }
         return view
     }
-    
+
     public func updateAndroidView(_ view: AndroidView.View) {
         guard let view = view as? Self.AndroidViewType else {
             assertionFailure("Expected \(AndroidViewType.self), found \(view)")
             return
         }
-        let context = Self.Context(androidContext: view.getContext())
+        let context = Self.Context(coordinator: coordinator(for: view), androidContext: view.getContext())
         updateAndroidView(view, context: context)
+        if let size = sizeThatFits(.unspecified, view: view, context: context) {
+            view.setLayoutSize(size)
+        }
     }
-    
-    public func removeAndroidView() {
-        
+
+    public func removeAndroidView(_ view: AndroidView.View) {
+        guard let view = view as? Self.AndroidViewType else {
+            assertionFailure("Expected \(AndroidViewType.self), found \(view)")
+            return
+        }
+        Self.dismantleAndroidView(view, coordinator: coordinator(for: view))
+        RepresentableCoordinatorStorage.remove(for: view)
     }
 }
 
+/// Type-erased wrapper protocol used by the renderer to mount Android views.
 public protocol AnyAndroidView: _PrimitiveView {
-    
+
     func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View
-    
+
     func updateAndroidView(_ view: AndroidView.View)
-    
-    func removeAndroidView()
+
+    /// Called by the renderer before the view is removed from the hierarchy.
+    func removeAndroidView(_ view: AndroidView.View)
+}
+
+public extension AnyAndroidView {
+
+    func removeAndroidView(_ view: AndroidView.View) { }
+}
+
+internal extension AndroidView.View {
+
+    /// Applies the specified size in points as the view's layout parameters,
+    /// converted to pixels using the display density.
+    func setLayoutSize(_ size: CGSize) {
+        let density = getContext().getResources().getDisplayMetrics().density
+        let width = Int32((Float(size.width) * density).rounded())
+        let height = Int32((Float(size.height) * density).rounded())
+        setLayoutParams(ViewGroup.LayoutParams(width, height))
+    }
 }
