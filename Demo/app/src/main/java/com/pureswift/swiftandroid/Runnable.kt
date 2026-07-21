@@ -1,6 +1,9 @@
 package com.pureswift.swiftandroid
 
-class Runnable(): java.lang.Runnable {
+// `java.lang.Runnable` backed by a Swift closure.
+class Runnable(private val block: SwiftObject?) : java.lang.Runnable {
+
+    fun getBlock(): SwiftObject? = block
 
     external override fun run()
 }
