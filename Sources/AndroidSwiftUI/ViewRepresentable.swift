@@ -5,6 +5,7 @@
 //  Created by Alsey Coleman Miller on 6/8/25.
 //
 
+import Foundation
 import AndroidKit
 
 /// A wrapper for an Android view that you use to integrate that view into your SwiftUI view hierarchy.
@@ -23,6 +24,12 @@ public protocol AndroidViewRepresentable: AndroidSwiftUI.View, AnyAndroidView, A
 
     /// Cleans up the presented view (and coordinator) in anticipation of its removal.
     static func dismantleAndroidView(_ view: Self.AndroidViewType, coordinator: Self.Coordinator)
+
+    /// Returns the preferred size of the view in points, or `nil` to defer to the parent's layout.
+    ///
+    /// The returned size is converted to pixels using the display density and applied
+    /// as the view's layout parameters.
+    func sizeThatFits(_ proposal: ProposedViewSize, view: Self.AndroidViewType, context: Self.Context) -> CGSize?
 }
 
 /// Contextual information about the state of the system that you use to create and update your Android view.
@@ -31,6 +38,8 @@ public typealias AndroidViewRepresentableContext <Representable: AndroidViewRepr
 public extension AndroidViewRepresentable {
 
     static func dismantleAndroidView(_ view: Self.AndroidViewType, coordinator: Self.Coordinator) { }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, view: Self.AndroidViewType, context: Self.Context) -> CGSize? { nil }
 }
 
 extension AndroidViewRepresentable {
@@ -40,6 +49,9 @@ extension AndroidViewRepresentable {
         let context = Self.Context(coordinator: coordinator, androidContext: context)
         let view = makeAndroidView(context: context)
         RepresentableCoordinatorStorage.store(coordinator, for: view)
+        if let size = sizeThatFits(.unspecified, view: view, context: context) {
+            view.setLayoutSize(size)
+        }
         return view
     }
 
@@ -50,6 +62,9 @@ extension AndroidViewRepresentable {
         }
         let context = Self.Context(coordinator: coordinator(for: view), androidContext: view.getContext())
         updateAndroidView(view, context: context)
+        if let size = sizeThatFits(.unspecified, view: view, context: context) {
+            view.setLayoutSize(size)
+        }
     }
 
     public func removeAndroidView(_ view: AndroidView.View) {
@@ -76,4 +91,16 @@ public protocol AnyAndroidView: _PrimitiveView {
 public extension AnyAndroidView {
 
     func removeAndroidView(_ view: AndroidView.View) { }
+}
+
+internal extension AndroidView.View {
+
+    /// Applies the specified size in points as the view's layout parameters,
+    /// converted to pixels using the display density.
+    func setLayoutSize(_ size: CGSize) {
+        let density = getContext().getResources().getDisplayMetrics().density
+        let width = Int32((Float(size.width) * density).rounded())
+        let height = Int32((Float(size.height) * density).rounded())
+        setLayoutParams(ViewGroup.LayoutParams(width, height))
+    }
 }
