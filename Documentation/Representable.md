@@ -173,8 +173,12 @@ The bridge is split across the language boundary:
 
 The renderer hosts the content in a `ComposeHostView` (a `FrameLayout` wrapping a
 `ComposeView`, since `ComposeView` is final). Every SwiftUI update calls
-`updateComposeContent(_:context:)` and then `refresh()`, which invalidates a
-`mutableIntStateOf` version key to force recomposition.
+`updateComposeContent(_:context:)` and then `refresh()`, which bumps a
+`mutableIntStateOf` version read inside the composition. Because the version is a
+recomposition dependency rather than an identity `key`, updates recompose the content
+in place and internal Compose state — scroll positions, animations, `remember`ed
+values keyed on stable inputs — survives across SwiftUI updates. Content is wrapped
+in the app's Material theme at the interop boundary.
 
 ## Future work
 
