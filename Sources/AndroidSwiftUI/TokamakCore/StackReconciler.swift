@@ -15,6 +15,7 @@
 //  Created by Max Desiatov on 28/11/2018.
 //
 
+import Observation
 import OpenCombineShim
 
 /** A class that reconciles a "raw" tree of element values (such as `App`, `Scene` and `View`,
@@ -257,22 +258,51 @@ public final class StackReconciler<R: Renderer> {
     return compositeElement[keyPath: keyPath]
   }
 
-  func render(compositeView: MountedCompositeView<R>) -> AnyView {
-    let view = body(of: compositeView, keyPath: \.view.view)
+  /** Evaluates `body` while tracking every `Observable` property read by it, scheduling an
+   update of `compositeElement` when any of those properties changes. Tracking is armed
+   again on every render, as `withObservationTracking` only reports the first change.
 
-    guard let renderedBody = renderer.primitiveBody(for: view) else {
-      return compositeView.view.bodyClosure(view)
+   This is the `Observation` counterpart of `setupTransientSubscription`, and it funnels into
+   the exact same `queueUpdate` invalidation path used by `ObservableObject`.
+   */
+  private func withObservationTracking<T>(
+    of compositeElement: MountedCompositeElement<R>,
+    _ body: () -> T
+  ) -> T {
+    Observation.withObservationTracking(body) { [weak self, weak compositeElement] in
+      // `onChange` is called synchronously on whichever thread mutated the object, and it is
+      // called *before* the new value is stored. Hopping onto the renderer's scheduler both
+      // keeps all reconciler state on the main thread (as with every other update path) and
+      // guarantees that the re-render observes the new value.
+      guard let self = self, let compositeElement = compositeElement else { return }
+      self.scheduler {
+        self.queueUpdate(for: compositeElement, transaction: .init(animation: nil))
+      }
     }
+  }
 
-    return renderedBody
+  func render(compositeView: MountedCompositeView<R>) -> AnyView {
+    withObservationTracking(of: compositeView) {
+      let view = body(of: compositeView, keyPath: \.view.view)
+
+      guard let renderedBody = renderer.primitiveBody(for: view) else {
+        return compositeView.view.bodyClosure(view)
+      }
+
+      return renderedBody
+    }
   }
 
   func render(mountedApp: MountedApp<R>) -> _AnyScene {
-    mountedApp.app.bodyClosure(body(of: mountedApp, keyPath: \.app.app))
+    withObservationTracking(of: mountedApp) {
+      mountedApp.app.bodyClosure(body(of: mountedApp, keyPath: \.app.app))
+    }
   }
 
   func render(mountedScene: MountedScene<R>) -> _AnyScene.BodyResult {
-    mountedScene.scene.bodyClosure(body(of: mountedScene, keyPath: \.scene.scene))
+    withObservationTracking(of: mountedScene) {
+      mountedScene.scene.bodyClosure(body(of: mountedScene, keyPath: \.scene.scene))
+    }
   }
 
   // swiftlint:disable function_parameter_count
