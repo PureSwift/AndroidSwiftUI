@@ -74,12 +74,37 @@ final class AndroidRenderer: Renderer {
                 log("\(self).\(#function) \(#line): Add \(viewObject.getClass().getName()) to \(viewGroup.getClass().getName())")
                 return AndroidTarget(host.view, viewObject)
             case .fragment:
-                // TODO: Mount into a fragment via FragmentManager/FragmentTransaction
-                log("\(self).\(#function) \(#line) Fragment mounting not yet implemented")
+                logError("\(self).\(#function) \(#line) Mounting views inside fragments is not supported")
                 return nil
             }
+        } else if let anyFragment = mapAnyView(host.view, transform: { (component: AnyAndroidFragment) in component }) {
+            // host the fragment in a dedicated container view
+            let container = FrameLayout(context)
+            container.setId(Self.viewClass.generateViewId())
+            switch parent.storage {
+            case .application:
+                activity.setRootView(container)
+            case .view(let parentView):
+                guard parentView.is(ViewGroup.self), let viewGroup = parentView.as(ViewGroup.self) else {
+                    logError("\(self).\(#function) \(#line) Parent View \(parentView.getClass().getName()) is not a ViewGroup)")
+                    return nil
+                }
+                viewGroup.addView(container)
+            case .fragment:
+                logError("\(self).\(#function) \(#line) Nested fragments are not supported")
+                return nil
+            }
+            let fragment = anyFragment.createFragment(context)
+            guard let transaction = activity.getFragmentManager()?.beginTransaction() else {
+                logError("\(self).\(#function) \(#line) Unable to begin fragment transaction")
+                return nil
+            }
+            _ = transaction.add(container.getId(), fragment)
+            _ = transaction.commit()
+            log("\(self).\(#function) \(#line): Added \(fragment.getClass().getName()) to container \(container.getId())")
+            return AndroidTarget(host.view, fragment, container: container)
         } else {
-            
+
             // handle cases like `TupleView`
             if mapAnyView(host.view, transform: { (view: ParentView) in view }) != nil {
                 log("\(self).\(#function) \(#line)")
@@ -100,18 +125,19 @@ final class AndroidRenderer: Renderer {
       with host: MountedHost
     ) {
         log("\(self).\(#function) \(host.view.typeConstructorName)")
-        guard let widget = mapAnyView(host.view, transform: { (widget: AnyAndroidView) in widget })
-            else { return }
-        
         switch target.storage {
         case .application:
             break
         case .view(let view):
+            guard let widget = mapAnyView(host.view, transform: { (widget: AnyAndroidView) in widget })
+                else { return }
             log("\(self).\(#function) Update \(view.getClass().getName())")
             widget.updateAndroidView(view)
-        case .fragment:
-            // TODO: Update fragment
-            break
+        case .fragment(let fragment, _):
+            guard let widget = mapAnyView(host.view, transform: { (widget: AnyAndroidFragment) in widget })
+                else { return }
+            log("\(self).\(#function) Update \(fragment.getClass().getName())")
+            widget.updateFragment(fragment)
         }
     }
 
@@ -128,9 +154,19 @@ final class AndroidRenderer: Renderer {
     ) {
         log("\(self).\(#function)")
         defer { task.finish() }
-        
-        guard mapAnyView(task.host.view, transform: { (widget: AnyAndroidView) in widget }) != nil
-        else { return }
+
+        switch target.storage {
+        case .application:
+            return
+        case .view(let view):
+            guard let widget = mapAnyView(task.host.view, transform: { (widget: AnyAndroidView) in widget })
+            else { return }
+            widget.removeAndroidView(view)
+        case .fragment(let fragment, _):
+            guard let widget = mapAnyView(task.host.view, transform: { (widget: AnyAndroidFragment) in widget })
+            else { return }
+            widget.removeFragment(fragment)
+        }
 
         target.destroy()
     }
@@ -151,7 +187,9 @@ final class AndroidRenderer: Renderer {
 }
 
 private extension AndroidRenderer {
-    
+
+    static let viewClass = try! JavaClass<AndroidView.View>()
+
     static var logTag: String { "AndroidRenderer" }
     
     static let log = try! JavaClass<AndroidUtil.Log>()
