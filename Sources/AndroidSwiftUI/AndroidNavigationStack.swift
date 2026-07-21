@@ -11,6 +11,10 @@ extension NavigationStack: AndroidPrimitive {
 
     var renderedBody: AnyView {
         let proxy = _NavigationStackProxy(self)
-        return AnyView(AndroidNavigationContainer(context: proxy.context, currentView: proxy.currentView))
+        return AnyView(AndroidNavigationContainer(
+            context: proxy.context,
+            content: AnyView(proxy.content),
+            pushedView: proxy.pushedView
+        ))
     }
 }
