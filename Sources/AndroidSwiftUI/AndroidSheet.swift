@@ -32,7 +32,14 @@ extension AndroidSheetContainer: ParentView {
         var views = [AnyView(presenter.content)]
         if presenter.isSheetPresented {
             let presenter = self.presenter
-            let sheet = AndroidSheetOverlay(content: presenter.sheetContent())
+            let content = presenter.sheetContent()
+            let detents = mapAnyView(content, transform: { (view: _AnyPresentationDetentsView) in view })?
+                .detents ?? []
+            if !detents.isEmpty {
+                // dim and block interaction with the presenting content behind a partial sheet
+                views.append(AnyView(AndroidSheetScrim()))
+            }
+            let sheet = AndroidSheetOverlay(content: content, detents: detents)
                 .environment(\.dismiss, DismissAction { presenter.dismiss() })
                 .environment(\.isPresented, true)
             views.append(AnyView(sheet))
@@ -68,9 +75,14 @@ private extension AndroidSheetContainer {
 }
 
 /// Opaque, full size container for the presented sheet content, stacked above the presenting content.
+///
+/// When detents are provided, the container is instead anchored to the bottom of the screen at
+/// the height of the smallest detent.
 struct AndroidSheetOverlay {
 
     let content: AnyView
+
+    var detents: Set<PresentationDetent> = []
 }
 
 extension AndroidSheetOverlay: ParentView {
@@ -87,8 +99,7 @@ extension AndroidSheetOverlay: AndroidViewRepresentable {
     func makeAndroidView(context: Self.Context) -> AndroidWidget.FrameLayout {
         let androidContext = context.androidContext
         let view = AndroidWidget.FrameLayout(androidContext)
-        let matchParent = try! JavaClass<ViewGroup.LayoutParams>().MATCH_PARENT
-        view.setLayoutParams(ViewGroup.LayoutParams(matchParent, matchParent))
+        applyLayoutParams(to: view, context: androidContext)
         view.setBackgroundColor(Self.backgroundColor(androidContext))
         // swallow touches so the presenting content underneath is not interactive
         view.setClickable(true)
@@ -100,11 +111,47 @@ extension AndroidSheetOverlay: AndroidViewRepresentable {
     }
 
     func updateAndroidView(_ view: AndroidWidget.FrameLayout, context: Self.Context) {
+        applyLayoutParams(to: view, context: context.androidContext)
         view.bringToFront()
     }
 }
 
 private extension AndroidSheetOverlay {
+
+    func applyLayoutParams(to view: AndroidWidget.FrameLayout, context: AndroidContent.Context) {
+        let matchParent = try! JavaClass<ViewGroup.LayoutParams>().MATCH_PARENT
+        guard let height = smallestDetentHeight(context) else {
+            view.setLayoutParams(ViewGroup.LayoutParams(matchParent, matchParent))
+            return
+        }
+        // anchor a partial height sheet to the bottom of the screen
+        let params = AndroidWidget.FrameLayout.LayoutParams(matchParent, height, ViewGravity.bottom.rawValue)
+        view.setLayoutParams(params.as(ViewGroup.LayoutParams.self))
+    }
+
+    /// The pixel height of the smallest detent, or `nil` for a full size sheet.
+    func smallestDetentHeight(_ context: AndroidContent.Context) -> Int32? {
+        guard detents.isEmpty == false,
+              let metrics = context.getResources()?.getDisplayMetrics()
+        else { return nil }
+        let screenHeight = Float(metrics.heightPixels)
+        let pixelHeights = detents.map { detent -> Float in
+            switch detent.storage {
+            case .medium:
+                return screenHeight * 0.5
+            case .large:
+                return screenHeight
+            case let .fraction(fraction):
+                return screenHeight * Float(fraction)
+            case let .height(height):
+                return Float(height) * metrics.density
+            }
+        }
+        guard let smallest = pixelHeights.min(), smallest < screenHeight else {
+            return nil
+        }
+        return Int32(smallest.rounded())
+    }
 
     /// The theme's window background, so the sheet is opaque in both light and dark themes.
     static func backgroundColor(_ context: AndroidContent.Context) -> Int32 {
@@ -119,4 +166,28 @@ private extension AndroidSheetOverlay {
         }
         return value.data
     }
+}
+
+/// Dimmed, non-interactive backdrop shown behind a partial height sheet.
+struct AndroidSheetScrim { }
+
+extension AndroidSheetScrim: AndroidViewRepresentable {
+
+    typealias Coordinator = Void
+
+    func makeAndroidView(context: Self.Context) -> AndroidView.View {
+        let view = AndroidView.View(context.androidContext)
+        let matchParent = try! JavaClass<ViewGroup.LayoutParams>().MATCH_PARENT
+        view.setLayoutParams(ViewGroup.LayoutParams(matchParent, matchParent))
+        // 40% black dim, matching the system bottom sheet scrim
+        view.setBackgroundColor(Int32(bitPattern: 0x66_00_00_00))
+        // swallow touches so the presenting content underneath is not interactive
+        view.setClickable(true)
+        view.setFocusable(true)
+        // draw above the presenting content, below the sheet
+        view.setElevation(15)
+        return view
+    }
+
+    func updateAndroidView(_ view: AndroidView.View, context: Self.Context) { }
 }
