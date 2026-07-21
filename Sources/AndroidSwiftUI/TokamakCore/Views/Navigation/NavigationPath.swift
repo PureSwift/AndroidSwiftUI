@@ -65,6 +65,8 @@ struct _AnyNavigationPathStore {
 
   let last: () -> AnyHashable?
 
+  let elements: () -> [AnyHashable]
+
   let append: (AnyHashable) -> ()
 
   let removeLast: () -> ()
@@ -72,6 +74,7 @@ struct _AnyNavigationPathStore {
   init(_ path: Binding<NavigationPath>) {
     count = { path.wrappedValue.count }
     last = { path.wrappedValue.elements.last }
+    elements = { path.wrappedValue.elements }
     append = { path.wrappedValue.elements.append($0) }
     removeLast = { path.wrappedValue.removeLast() }
   }
@@ -82,6 +85,7 @@ struct _AnyNavigationPathStore {
   {
     count = { path.wrappedValue.count }
     last = { path.wrappedValue.last.map { AnyHashable($0) } }
+    elements = { path.wrappedValue.map { AnyHashable($0) } }
     append = { value in
       guard let element = value.base as? Data.Element else { return }
       path.wrappedValue.append(element)
