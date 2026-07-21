@@ -28,6 +28,10 @@ public struct NavigationLink<Label, Destination>: _PrimitiveView where Label: Vi
   @State
   var destination: NavigationLinkDestination
 
+  /// The value presented by a value-based link, resolved against the destinations
+  /// registered with `navigationDestination(for:destination:)`.
+  let value: AnyHashable?
+
   let label: Label
 
   @EnvironmentObject
@@ -38,6 +42,7 @@ public struct NavigationLink<Label, Destination>: _PrimitiveView where Label: Vi
 
   public init(destination: Destination, @ViewBuilder label: () -> Label) {
     _destination = State(wrappedValue: NavigationLinkDestination(destination))
+    value = nil
     self.label = label()
   }
 
@@ -51,6 +56,22 @@ public struct NavigationLink<Label, Destination>: _PrimitiveView where Label: Vi
   //    tag: V, selection: Binding<V?>,
   //    @ViewBuilder label: () -> Label
   //   ) where V : Hashable
+}
+
+public extension NavigationLink where Destination == Never {
+  /// Creates a navigation link that presents the view registered for the value's type
+  /// with `navigationDestination(for:destination:)`.
+  init<P>(value: P?, @ViewBuilder label: () -> Label) where P: Hashable {
+    _destination = State(wrappedValue: NavigationLinkDestination(EmptyView()))
+    self.value = value.map { AnyHashable($0) }
+    self.label = label()
+  }
+
+  /// Creates a navigation link that presents the view registered for the value's type,
+  /// with a `Text` label generated from a title string.
+  init<S, P>(_ title: S, value: P?) where S: StringProtocol, P: Hashable, Label == Text {
+    self.init(value: value) { Text(title) }
+  }
 }
 
 public extension NavigationLink where Label == Text {
@@ -99,7 +120,9 @@ public struct _NavigationLinkProxy<Label, Destination> where Label: View, Destin
   }
 
   public func activate() {
-    if !isSelected {
+    if let value = subject.value {
+      subject.navigationContext.push(value: value)
+    } else if !isSelected {
       subject.navigationContext.push(subject.destination)
     }
   }
