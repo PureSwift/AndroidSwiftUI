@@ -8,8 +8,10 @@
 /// Presents a sheet when a binding to a Boolean value that you provide is `true`.
 ///
 /// The sheet content is mounted as a child of the presenting view's container and is unmounted
-/// when `isPresented` becomes `false`. The content closure may capture and mutate `isPresented`
-/// in order to dismiss itself.
+/// when `isPresented` becomes `false`. Sheet content can dismiss itself by calling the `dismiss`
+/// environment action (read with `@Environment(\.dismiss)`), or by capturing and mutating
+/// `isPresented`. Dismissal by any path — including the system back button — resets the binding
+/// and invokes `onDismiss`.
 public extension View {
 
     func sheet<Content>(
