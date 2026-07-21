@@ -73,6 +73,9 @@ final class AndroidRenderer: Renderer {
                 let viewObject = anyView.createAndroidView(context)
                 // TODO: Determine order
                 viewGroup.addView(viewObject)
+                if let transitioning = mapAnyView(host.view, transform: { (view: AndroidTransitioningView) in view }) {
+                    transitioning.transition.animateAppearance(of: viewObject)
+                }
                 log("\(self).\(#function) \(#line): Add \(viewObject.getClass().getName()) to \(viewGroup.getClass().getName())")
                 return AndroidTarget(host.view, viewObject)
             case .fragment, .androidXFragment:
@@ -165,27 +168,46 @@ final class AndroidRenderer: Renderer {
       with task: UnmountHostTask<AndroidRenderer>
     ) {
         log("\(self).\(#function)")
-        defer { task.finish() }
-
         RepresentableHostContext.update(task.host)
         switch target.storage {
         case .application:
+            task.finish()
             return
         case .view(let view):
             guard let widget = mapAnyView(task.host.view, transform: { (widget: AnyAndroidView) in widget })
-            else { return }
+            else {
+                task.finish()
+                return
+            }
             widget.removeAndroidView(view)
+            // animate the view out before removing it; children stay mounted until
+            // the unmount task finishes, so the content remains visible while animating
+            if let transitioning = mapAnyView(task.host.view, transform: { (view: AndroidTransitioningView) in view }),
+               transitioning.transition != .none {
+                transitioning.transition.animateRemoval(of: view) {
+                    target.destroy()
+                    task.finish()
+                }
+                return
+            }
         case .fragment(let fragment, _):
             guard let widget = mapAnyView(task.host.view, transform: { (widget: AnyAndroidFragment) in widget })
-            else { return }
+            else {
+                task.finish()
+                return
+            }
             widget.removeFragment(fragment)
         case .androidXFragment(let fragment, _):
             guard let widget = mapAnyView(task.host.view, transform: { (widget: AnyAndroidXFragment) in widget })
-            else { return }
+            else {
+                task.finish()
+                return
+            }
             widget.removeAndroidXFragment(fragment)
         }
 
         target.destroy()
+        task.finish()
     }
     
     /** Returns a body of a given pritimive view, or `nil` if `view` is not a primitive view for
