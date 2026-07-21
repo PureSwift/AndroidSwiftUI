@@ -11,26 +11,38 @@ extension NavigationView: AndroidPrimitive {
 
     var renderedBody: AnyView {
         let proxy = _NavigationViewProxy(self)
-        return AnyView(AndroidNavigationContainer(context: proxy.context, currentView: proxy.currentView))
+        return AnyView(AndroidNavigationContainer(
+            context: proxy.context,
+            content: AnyView(proxy.content),
+            pushedView: proxy.pushedView
+        ))
     }
 }
 
-/// Native container for `NavigationView` and `NavigationStack`. Hosts the currently visible screen
-/// (root content or the top of the navigation stack) as a mounted child, and intercepts the system
-/// back button to pop.
+/// Native container for `NavigationView` and `NavigationStack`. Hosts the root content as an
+/// always mounted child — so its state survives pushes and its `navigationDestination`
+/// registrations stay live — stacks the pushed screen above it, and intercepts the system back
+/// button to pop.
 struct AndroidNavigationContainer {
 
     /// The navigation state shared with the `NavigationLink`s of the hosted screen.
     let context: NavigationContext
 
-    /// The screen to display, provided by the container's proxy.
-    let currentView: AnyView
+    /// The root content, always mounted.
+    let content: AnyView
+
+    /// The pushed screen stacked above the root, if any.
+    let pushedView: AnyView?
 }
 
 extension AndroidNavigationContainer: ParentView {
 
     var children: [AnyView] {
-        [currentView]
+        var views = [content]
+        if let pushedView {
+            views.append(AnyView(AndroidSheetOverlay(content: pushedView)))
+        }
+        return views
     }
 }
 
@@ -55,6 +67,6 @@ extension AndroidNavigationContainer: AndroidViewRepresentable {
 private extension AndroidNavigationContainer {
 
     func updateView(_ view: BackHandlerView) {
-        view.setBackHandlerEnabled(!context.path.isEmpty)
+        view.setBackHandlerEnabled(context.hasPushedDestinations)
     }
 }
