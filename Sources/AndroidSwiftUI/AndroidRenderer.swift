@@ -24,12 +24,13 @@ final class AndroidRenderer: Renderer {
             environment: .defaultEnvironment, // merge environment with scene environment
             renderer: self, // FIXME: Always retained
             scheduler: { next in
-                Task {
-                    await MainActor.run {
-                        Self.log("\(self).\(#function) Scheduling next view update")
-                        next()
-                    }
+                // Post to the Android main looper. A Swift Concurrency task is not reliably
+                // executed when scheduled from every JNI entry point (e.g. the Compose back
+                // handler), so schedule through the platform run loop instead.
+                let runnable = Runnable {
+                    next()
                 }
+                _ = Self.mainHandler.post(runnable.as(JavaLang.Runnable.self))
             }
         )
     }
@@ -207,6 +208,9 @@ final class AndroidRenderer: Renderer {
 }
 
 private extension AndroidRenderer {
+
+    /// Handler bound to the Android main looper, used to schedule reconciler updates.
+    static let mainHandler = AndroidOS.Handler(try! JavaClass<AndroidOS.Looper>().getMainLooper())
 
     /// Creates a container view for hosting a fragment and adds it to the parent target.
     func mountFragmentContainer(
