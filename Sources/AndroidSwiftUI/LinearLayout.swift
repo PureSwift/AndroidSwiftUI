@@ -75,7 +75,8 @@ extension VStack: AndroidPrimitive {
     
     var renderedBody: AnyView {
         let proxy = _VStackProxy(self)
-        let gravity = proxy.subject._alignment.vertical.gravity
+        // the alignment of a vertical stack positions children along the horizontal cross axis
+        let gravity = proxy.subject._alignment.horizontal.gravity
         let linearLayout = AndroidLinearLayout(orientation: .vertical, gravity: gravity) {
             proxy.subject.content
         }
