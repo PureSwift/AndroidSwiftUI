@@ -8,6 +8,7 @@ SwiftUI view hierarchy.
 |---|---|---|
 | `AndroidViewRepresentable` | `UIViewRepresentable` | `android.view.View` |
 | `AndroidFragmentRepresentable` | `UIViewControllerRepresentable` | `android.app.Fragment` |
+| `AndroidXFragmentRepresentable` | `UIViewControllerRepresentable` | `androidx.fragment.app.Fragment` |
 | `AndroidActivityRepresentable` | *(presentation)* | `android.app.Activity` via `Intent` |
 | `AndroidComposeRepresentable` | — | Jetpack Compose content |
 
@@ -23,8 +24,15 @@ every update through `AndroidRepresentableContext`:
 public struct AndroidRepresentableContext<Representable: AndroidRepresentable> {
     public let coordinator: Representable.Coordinator
     public let androidContext: AndroidContent.Context
+    public let environment: EnvironmentValues
+    public let transaction: Transaction
 }
 ```
+
+The per-view `EnvironmentValues` and the current `Transaction` are captured by the renderer
+from the mounted host immediately before each representable entry point
+(`RepresentableHostContext`), so they reflect the environment of the enclosing hierarchy at
+mount, update, and unmount time.
 
 Each protocol is backed by a type-erased renderer protocol (`AnyAndroidView`,
 `AnyAndroidFragment`) with `create` / `update` / `remove` entry points. The
@@ -65,6 +73,13 @@ Lifecycle mapping:
 - reconcile → `updateAndroidView(_:context:)`
 - unmount → `dismantleAndroidView(_:coordinator:)`, view removed from its parent
 
+### Sizing
+
+The optional `sizeThatFits(_:view:context:)` requirement is the equivalent of
+`UIViewRepresentable.sizeThatFits`. Returning a `CGSize` (in points) converts it to pixels
+using the display density and applies it as the view's `LayoutParams` after every
+create and update pass; returning `nil` (the default) defers to the parent's layout.
+
 ## `AndroidFragmentRepresentable`
 
 The closest Android analog of `UIViewControllerRepresentable`. Fragments are the
@@ -93,6 +108,19 @@ struct PlayerScreen: AndroidFragmentRepresentable {
 
 Nested fragments (a fragment target inside another fragment) are not currently supported.
 
+Fragment lifecycle events (`onStart`, `onResume`, `onPause`, `onStop`, `onDestroyView`,
+`onViewCreated`) are forwarded from the Kotlin `Fragment` class to the Swift
+`Fragment.Callback` closures, so conforming types can surface them to their coordinator.
+
+### AndroidX fragments
+
+`AndroidXFragmentRepresentable` is the same shape for `androidx.fragment.app.Fragment`,
+hosted with the support `FragmentManager` (`FragmentActivity.getSupportFragmentManager()`).
+This requires the main activity to extend `androidx.fragment.app.FragmentActivity`, which
+the demo's `MainActivity` now does. Minimal AndroidX bindings (`AndroidXFragment`,
+`AndroidXFragmentManager`, `AndroidXFragmentTransaction`, `AndroidXFragmentActivity`) are
+declared locally until AndroidKit provides them.
+
 ## `AndroidActivityRepresentable`
 
 Activities cannot be embedded in another view hierarchy — they are always presented
@@ -109,8 +137,28 @@ struct SettingsScreen: AndroidActivityRepresentable {
 ```
 
 A zero-sized placeholder view occupies the representable's position in the hierarchy.
-Communication with the presented activity happens through intent extras and the
-coordinator; the activity's result APIs (`registerForActivityResult`) are future work.
+Communication with the presented activity happens through intent extras and the coordinator.
+
+### Activity results
+
+When mounted inside an activity, the intent is started with
+`ActivityCompat.startActivityForResult` using a request code allocated by
+`ActivityResultRegistry`. The main activity forwards `onActivityResult` to Swift, which
+dispatches an `ActivityResult` (result code + data intent) to the representable:
+
+```swift
+struct DocumentPicker: AndroidActivityRepresentable {
+
+    func makeIntent(context: Context) -> AndroidContent.Intent {
+        Intent("android.intent.action.OPEN_DOCUMENT")
+    }
+
+    func onActivityResult(_ result: ActivityResult, coordinator: Void) {
+        guard result.isSuccess else { return }
+        // read result.data
+    }
+}
+```
 
 ## `AndroidComposeRepresentable`
 
@@ -130,9 +178,7 @@ The renderer hosts the content in a `ComposeHostView` (a `FrameLayout` wrapping 
 
 ## Future work
 
-- Thread per-view `EnvironmentValues` and `Transaction` into `AndroidRepresentableContext`.
-- Activity results and lifecycle callbacks surfaced to the coordinator.
-- AndroidX `FragmentManager` support (the current implementation uses the framework
-  `android.app.FragmentManager` available on all activities).
-- Sizing negotiation between SwiftUI layout and the wrapped component
-  (equivalent of `sizeThatFits`).
+- Nested fragments (a fragment representable inside another fragment target).
+- `registerForActivityResult`-style typed contracts on top of `ActivityResult`.
+- Full layout negotiation once the renderer adopts the Fiber reconciler
+  (`sizeThatFits` currently receives an `unspecified` proposal).
