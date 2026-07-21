@@ -126,16 +126,23 @@ public struct _NavigationViewProxy<Content: View> {
     context.path.isEmpty ? AnyView(content) : AnyView(destination)
   }
 
-  /// The pushed destination to display above the root, if any, with the `dismiss`
-  /// environment action wired to pop.
-  public var pushedView: AnyView? {
-    guard !context.path.isEmpty else { return nil }
+  /// The pushed destinations to display above the root, in order from bottom to top,
+  /// with the `dismiss` environment action wired to pop.
+  public var pushedViews: [AnyView] {
     let context = self.context
-    return AnyView(
-      destination
-        .environment(\.dismiss, DismissAction { context.pop() })
-        .environment(\.isPresented, true)
-    )
+    return context.path.map { pushed in
+      AnyView(
+        pushed.view
+          .environmentObject(context)
+          .environment(\.dismiss, DismissAction { context.pop() })
+          .environment(\.isPresented, true)
+      )
+    }
+  }
+
+  /// The topmost pushed destination, if any.
+  public var pushedView: AnyView? {
+    pushedViews.last
   }
 
   public var destination: some View {

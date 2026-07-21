@@ -24,12 +24,13 @@ final class AndroidRenderer: Renderer {
             environment: .defaultEnvironment, // merge environment with scene environment
             renderer: self, // FIXME: Always retained
             scheduler: { next in
-                Task {
-                    await MainActor.run {
-                        Self.log("\(self).\(#function) Scheduling next view update")
-                        next()
-                    }
+                // Post to the Android main looper. A Swift Concurrency task is not reliably
+                // executed when scheduled from every JNI entry point (e.g. the Compose back
+                // handler), so schedule through the platform run loop instead.
+                let runnable = Runnable {
+                    next()
                 }
+                _ = Self.mainHandler.post(runnable.as(JavaLang.Runnable.self))
             }
         )
     }
@@ -59,6 +60,8 @@ final class AndroidRenderer: Renderer {
             case .application:
                 // root view, add to main activity
                 let viewObject = anyView.createAndroidView(context)
+                // inset the content from the system bars when drawing edge to edge
+                viewObject.setFitsSystemWindows(true)
                 activity.setRootView(viewObject)
                 log("\(self).\(#function) \(#line): Created root view \(viewObject.getClass().getName())")
                 return AndroidTarget(host.view, viewObject)
@@ -72,6 +75,9 @@ final class AndroidRenderer: Renderer {
                 let viewObject = anyView.createAndroidView(context)
                 // TODO: Determine order
                 viewGroup.addView(viewObject)
+                if let transitioning = mapAnyView(host.view, transform: { (view: AndroidTransitioningView) in view }) {
+                    transitioning.transition.animateAppearance(of: viewObject)
+                }
                 log("\(self).\(#function) \(#line): Add \(viewObject.getClass().getName()) to \(viewGroup.getClass().getName())")
                 return AndroidTarget(host.view, viewObject)
             case .fragment, .androidXFragment:
@@ -164,34 +170,57 @@ final class AndroidRenderer: Renderer {
       with task: UnmountHostTask<AndroidRenderer>
     ) {
         log("\(self).\(#function)")
-        defer { task.finish() }
-
         RepresentableHostContext.update(task.host)
         switch target.storage {
         case .application:
+            task.finish()
             return
         case .view(let view):
             guard let widget = mapAnyView(task.host.view, transform: { (widget: AnyAndroidView) in widget })
-            else { return }
+            else {
+                task.finish()
+                return
+            }
             widget.removeAndroidView(view)
+            // animate the view out before removing it; children stay mounted until
+            // the unmount task finishes, so the content remains visible while animating
+            if let transitioning = mapAnyView(task.host.view, transform: { (view: AndroidTransitioningView) in view }),
+               transitioning.transition != .none {
+                transitioning.transition.animateRemoval(of: view) {
+                    target.destroy()
+                    task.finish()
+                }
+                return
+            }
         case .fragment(let fragment, _):
             guard let widget = mapAnyView(task.host.view, transform: { (widget: AnyAndroidFragment) in widget })
-            else { return }
+            else {
+                task.finish()
+                return
+            }
             widget.removeFragment(fragment)
         case .androidXFragment(let fragment, _):
             guard let widget = mapAnyView(task.host.view, transform: { (widget: AnyAndroidXFragment) in widget })
-            else { return }
+            else {
+                task.finish()
+                return
+            }
             widget.removeAndroidXFragment(fragment)
         }
 
         target.destroy()
+        task.finish()
     }
     
     /** Returns a body of a given pritimive view, or `nil` if `view` is not a primitive view for
      this renderer.
      */
     func primitiveBody(for view: Any) -> AnyView? {
-        (view as? AndroidPrimitive)?.renderedBody
+        // `as?` sees through `Optional`, but an optional view must render through its own
+        // `body` so the wrapped view is mounted as a child element with its dynamic
+        // properties injected; check the dynamic type to match `isPrimitiveView`
+        guard type(of: view) is AndroidPrimitive.Type else { return nil }
+        return (view as? AndroidPrimitive)?.renderedBody
     }
 
     /** Returns `true` if a given view type is a primitive view that should be deferred to this
@@ -204,6 +233,9 @@ final class AndroidRenderer: Renderer {
 
 private extension AndroidRenderer {
 
+    /// Handler bound to the Android main looper, used to schedule reconciler updates.
+    static let mainHandler = AndroidOS.Handler(try! JavaClass<AndroidOS.Looper>().getMainLooper())
+
     /// Creates a container view for hosting a fragment and adds it to the parent target.
     func mountFragmentContainer(
         to parent: AndroidTarget,
@@ -214,6 +246,8 @@ private extension AndroidRenderer {
         container.setId(Self.viewClass.generateViewId())
         switch parent.storage {
         case .application:
+            // inset the content from the system bars when drawing edge to edge
+            container.setFitsSystemWindows(true)
             activity.setRootView(container)
         case .view(let parentView):
             guard parentView.is(ViewGroup.self), let viewGroup = parentView.as(ViewGroup.self) else {

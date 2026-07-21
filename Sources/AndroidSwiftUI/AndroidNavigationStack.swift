@@ -14,7 +14,7 @@ extension NavigationStack: AndroidPrimitive {
         return AnyView(AndroidNavigationContainer(
             context: proxy.context,
             content: AnyView(proxy.content),
-            pushedView: proxy.pushedView
+            pushedViews: proxy.pushedViews
         ))
     }
 }

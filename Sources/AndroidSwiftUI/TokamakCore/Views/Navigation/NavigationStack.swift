@@ -81,13 +81,16 @@ public struct _NavigationStackProxy<Root: View> {
     context.path.isEmpty ? AnyView(content) : AnyView(destination)
   }
 
-  /// The pushed destination to display above the root, if any, with the `dismiss`
-  /// environment action wired to pop.
-  public var pushedView: AnyView? {
+  /// The pushed destinations to display above the root, in order from bottom to top,
+  /// with the `dismiss` environment action wired to pop.
+  public var pushedViews: [AnyView] {
     let context = self.context
-    let pushed: AnyView
-    if let store = subject.pathStore, store.count() > 0 {
-      guard let value = store.last(), let view = context.destinationView(for: value) else {
+    let pushed: [AnyView]
+    if let store = subject.pathStore {
+      let values = store.elements()
+      guard !values.isEmpty else { return [] }
+      let resolved = values.compactMap { context.destinationView(for: $0) }
+      guard resolved.count == values.count else {
         // destination builders register during the root's body evaluation, so a
         // pre-populated path cannot resolve on the very first render; retry once
         // the content has rendered
@@ -96,19 +99,24 @@ public struct _NavigationStackProxy<Root: View> {
             context?.objectWillChange.send()
           }
         }
-        return nil
+        return []
       }
-      pushed = AnyView(view.environmentObject(context))
-    } else if !context.path.isEmpty {
-      pushed = AnyView(destination)
+      pushed = resolved.map { AnyView($0.environmentObject(context)) }
     } else {
-      return nil
+      pushed = context.path.map { AnyView($0.view.environmentObject(context)) }
     }
-    return AnyView(
-      pushed
-        .environment(\.dismiss, DismissAction { context.pop() })
-        .environment(\.isPresented, true)
-    )
+    return pushed.map { view in
+      AnyView(
+        view
+          .environment(\.dismiss, DismissAction { context.pop() })
+          .environment(\.isPresented, true)
+      )
+    }
+  }
+
+  /// The topmost pushed destination, if any.
+  public var pushedView: AnyView? {
+    pushedViews.last
   }
 
   public var destination: some View {
