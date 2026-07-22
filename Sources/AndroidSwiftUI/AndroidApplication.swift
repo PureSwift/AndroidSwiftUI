@@ -6,7 +6,6 @@
 //
 
 import AndroidKit
-import OpenCombineShim
 
 @JavaClass("com.pureswift.swiftandroid.Application")
 open class Application: AndroidApp.Application {
@@ -40,27 +39,6 @@ extension Application {
     }
 }
 
-public extension App {
-    
-  static func _launch(_ app: Self, with configuration: _AppConfiguration) {
-      // create renderer
-      let renderer = AndroidRenderer(app: app, configuration: configuration)
-      AndroidRenderer.shared = renderer
-  }
-  
-  static func _setTitle(_ title: String) {
-      
-  }
-
-  var _phasePublisher: AnyPublisher<ScenePhase, Never> {
-    CurrentValueSubject(.active).eraseToAnyPublisher()
-  }
-
-  var _colorSchemePublisher: AnyPublisher<ColorScheme, Never> {
-      // TODO: Get dark mode on Android
-    CurrentValueSubject(.light).eraseToAnyPublisher()
-  }
-}
-
+/// The app's entry point, defined by the application module.
 @_silgen_name("AndroidSwiftUIMain")
 func AndroidSwiftUIMain()
