@@ -26,7 +26,30 @@ struct StacksScreen: View {
                     Text("Lazy one")
                     Text("Lazy two, longer")
                 }
+                Divider()
+                ZStackSection(title: "ZStack .center", alignment: .center)
+                ZStackSection(title: "ZStack .topLeading", alignment: .topLeading)
+                ZStackSection(title: "ZStack .bottomTrailing", alignment: .bottomTrailing)
             }
+        }
+    }
+}
+
+struct ZStackSection: View {
+
+    let title: String
+
+    let alignment: Alignment
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(title)
+            ZStack(alignment: alignment) {
+                Color.blue
+                    .frame(width: 240, height: 120)
+                Text("On top")
+            }
+            Divider()
         }
     }
 }
