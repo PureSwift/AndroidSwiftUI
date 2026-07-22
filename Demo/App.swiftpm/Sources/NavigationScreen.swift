@@ -28,6 +28,7 @@ struct NavigationScreen: View {
         .navigationDestination(for: Int.self) { value in
             ValueDestination(value: value)
         }
+        .navigationTitle("Navigation")
     }
 }
 
@@ -48,6 +49,7 @@ struct ValueDestination: View {
                 dismiss()
             }
         }
+        .navigationTitle("Value \(value)")
     }
 }
 
