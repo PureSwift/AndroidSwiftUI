@@ -34,6 +34,7 @@ enum GalleryScreen: String, CaseIterable, Identifiable {
     case observation
     case state
     case modifiers
+    case controls
 
     var id: String { rawValue }
 
@@ -49,6 +50,7 @@ enum GalleryScreen: String, CaseIterable, Identifiable {
         case .observation: return "Observation"
         case .state: return "State"
         case .modifiers: return "Modifiers"
+        case .controls: return "Controls"
         }
     }
 
@@ -64,6 +66,7 @@ enum GalleryScreen: String, CaseIterable, Identifiable {
         case .observation: return AnyView(ObservationScreen())
         case .state: return AnyView(StateScreen())
         case .modifiers: return AnyView(ModifierScreen())
+        case .controls: return AnyView(ControlsScreen())
         }
     }
 }
