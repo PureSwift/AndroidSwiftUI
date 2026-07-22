@@ -44,6 +44,14 @@ extension AndroidProgressBar: AndroidViewRepresentable {
             ? try! JavaClass<AndroidR.R.attr>().progressBarStyle
             : try! JavaClass<AndroidR.R.attr>().progressBarStyleHorizontal
         let view = AndroidWidget.ProgressBar(context.androidContext, nil, style)
+        if fractionCompleted != nil {
+            // the horizontal track is meaningless at its intrinsic width, so it spans the
+            // stack; the spinner keeps its natural size
+            view.setLayoutParams(ViewGroup.LayoutParams(
+                try! JavaClass<ViewGroup.LayoutParams>().MATCH_PARENT,
+                try! JavaClass<ViewGroup.LayoutParams>().WRAP_CONTENT
+            ))
+        }
         view.setMax(progressScale)
         updateView(view)
         return view
