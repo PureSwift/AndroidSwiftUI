@@ -38,11 +38,56 @@ struct AndroidNavigationContainer {
 extension AndroidNavigationContainer: ParentView {
 
     var children: [AnyView] {
-        var views = [content]
+        var views = [titled(content)]
         views += pushedViews.map {
-            AnyView(AndroidSheetOverlay(content: $0, transition: .slide))
+            AnyView(AndroidSheetOverlay(content: titled($0), transition: .slide))
         }
         return views
+    }
+}
+
+private extension AndroidNavigationContainer {
+
+    /// Places a screen below a bar carrying its `navigationTitle`, if it declares one.
+    ///
+    /// The title is a preference, so it is only known once the screen's body has been
+    /// evaluated — reading it off the static view tree would miss every title declared
+    /// inside a composite view's body. `_delay` defers the bar until the reconciler has
+    /// collected the screen's preferences, then re-renders with the resolved value.
+    ///
+    /// Screens without a title are hosted unchanged rather than wrapped in an empty bar,
+    /// so a navigation stack that never sets one lays out exactly as it did before.
+    func titled(_ screen: AnyView) -> AnyView {
+        AnyView(NavigationTitleKey._delay { value in
+            value._force { title in
+                TitledScreen(title: title, screen: screen)
+            }
+        })
+    }
+}
+
+/// A screen shown below its navigation title, if it has one.
+///
+/// Popping is left to the system back button, which the container already handles, rather
+/// than a back control in the bar.
+private struct TitledScreen: View {
+
+    let title: AnyView?
+
+    let screen: AnyView
+
+    var body: some View {
+        Group {
+            if let title {
+                VStack(spacing: 0) {
+                    title
+                    Divider()
+                    screen
+                }
+            } else {
+                screen
+            }
+        }
     }
 }
 
