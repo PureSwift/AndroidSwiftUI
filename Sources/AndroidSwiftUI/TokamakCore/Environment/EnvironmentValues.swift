@@ -117,6 +117,9 @@ internal extension EnvironmentValues {
     static var defaultEnvironment: Self {
         var environment = EnvironmentValues()
         environment[_ColorSchemeKey.self] = .light
+        // control style keys trap unless the renderer supplies a default, and are read
+        // whenever a control is in the view tree — not only when its body is evaluated
+        environment[_ToggleStyleKey.self] = _AnyToggleStyle(DefaultToggleStyle())
         return environment
     }
 }
