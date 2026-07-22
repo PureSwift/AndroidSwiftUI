@@ -26,6 +26,16 @@ struct GridScreen: View {
                         .background(Color.orange)
                 }
             }
+            Divider()
+            Text("Two rows, horizontal")
+            LazyHGrid(rows: [GridItem(.flexible()), GridItem(.flexible())]) {
+                ForEach(1...8, id: \.self) { number in
+                    Text("Cell \(number)")
+                        .padding()
+                        .background(Color.green)
+                }
+            }
+            .frame(height: 160)
         }
     }
 }
