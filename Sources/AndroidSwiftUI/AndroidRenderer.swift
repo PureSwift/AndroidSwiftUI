@@ -242,6 +242,11 @@ private extension AndroidRenderer {
     /// `AndroidExpandingView` (such as `Spacer`) instead receive weighted parameters and
     /// grow to fill the remaining space along the stack's axis.
     func applyStackLayoutParams(for view: AnyView, to viewObject: AndroidView.View, in parentView: AndroidView.View) {
+        if let frameLayout = parentView.as(AndroidWidget.FrameLayout.self),
+           let gravity = RepresentableCoordinatorStorage.coordinator(for: frameLayout) as? ViewGravity {
+            applyFrameLayoutParams(to: viewObject, gravity: gravity)
+            return
+        }
         guard let linearLayout = parentView.as(AndroidWidget.LinearLayout.self) else { return }
         let wrapContent = try! JavaClass<ViewGroup.LayoutParams>().WRAP_CONTENT
         let isVertical = linearLayout.orientation == .vertical
@@ -254,6 +259,19 @@ private extension AndroidRenderer {
             let params = AndroidWidget.LinearLayout.LayoutParams(wrapContent, wrapContent)
             viewObject.setLayoutParams(params.as(ViewGroup.LayoutParams.self))
         }
+    }
+
+    /// Assigns layout parameters to a child added to a `ZStack`'s `FrameLayout`.
+    ///
+    /// `FrameLayout` stretches children to fill the container by default, which would leave
+    /// the stack's alignment with no room to act, so children hug their content and carry
+    /// the stack's gravity. Only containers with a retained gravity are treated this way,
+    /// leaving the frame layouts used for sheets and fragment hosting untouched.
+    func applyFrameLayoutParams(to viewObject: AndroidView.View, gravity: ViewGravity) {
+        guard viewObject.getLayoutParams() == nil else { return }
+        let wrapContent = try! JavaClass<ViewGroup.LayoutParams>().WRAP_CONTENT
+        let params = AndroidWidget.FrameLayout.LayoutParams(wrapContent, wrapContent, gravity.rawValue)
+        viewObject.setLayoutParams(params.as(ViewGroup.LayoutParams.self))
     }
 
     /// Handler bound to the Android main looper, used to schedule reconciler updates.
