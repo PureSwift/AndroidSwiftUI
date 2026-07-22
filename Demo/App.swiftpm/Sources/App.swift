@@ -5,63 +5,27 @@ import AndroidKit
 import SwiftUI
 #endif
 
-#if canImport(SwiftUI)
-@main
-struct DemoApp {
-    
-    init() {
-        Self.onAppLaunch()
-    }
-}
-#else
-struct DemoApp {
-    
-    init() {
-        Self.onAppLaunch()
-    }
-}
-#endif
+// The gallery screens are restored alongside the view types they exercise as the
+// Compose-backed renderer is built up; until then this is a bare launch point.
 
-extension DemoApp {
-    
-    static func onAppLaunch() {
-        log("Starting SwiftUI App")
-    }
-}
-
-extension DemoApp: App {
-    
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-    }
-}
-
-// App launch point
 #if canImport(AndroidSwiftUI)
+
+/// App launch point, called from `MainActivity`.
 @_silgen_name("AndroidSwiftUIMain")
 func AndroidSwiftUIMain() {
-    DemoApp.log(#function)
-    DemoApp.main()
-}
-
-extension DemoApp {
-    
-    static var logTag: String { "DemoApp" }
-    
-    static func log(_ string: String) {
-        let log = try! JavaClass<AndroidUtil.Log>()
-        _ = log.v(Self.logTag, string)
-    }
+    let log = try! JavaClass<AndroidUtil.Log>()
+    _ = log.v("DemoApp", "Starting SwiftUI App")
 }
 
 #else
 
-extension DemoApp {
-    
-    static func log(_ message: String) {
-        print(message)
+@main
+struct DemoApp: App {
+
+    var body: some Scene {
+        WindowGroup {
+            Text("Demo")
+        }
     }
 }
 

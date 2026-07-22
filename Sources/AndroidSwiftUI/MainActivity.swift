@@ -35,8 +35,6 @@ extension MainActivity {
     @JavaMethod
     public func onActivityResultSwift(_ requestCode: Int32, _ resultCode: Int32, _ data: AndroidContent.Intent?) {
         log("\(self).\(#function) requestCode \(requestCode) resultCode \(resultCode)")
-        let result = ActivityResult(resultCode: resultCode, data: data)
-        ActivityResultRegistry.dispatch(requestCode: requestCode, result: result)
     }
 }
 

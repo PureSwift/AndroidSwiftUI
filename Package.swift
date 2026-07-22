@@ -19,10 +19,6 @@ let package = Package(
         .package(
             url: "https://github.com/PureSwift/Android.git",
             branch: "master"
-        ),
-        .package(
-          url: "https://github.com/PureSwift/OpenCombine.git",
-          branch: "feature/android"
         )
     ],
     targets: [
@@ -32,10 +28,6 @@ let package = Package(
                 .product(
                     name: "AndroidKit",
                     package: "Android"
-                ),
-                .product(
-                    name: "OpenCombineShim",
-                    package: "OpenCombine"
                 )
             ],
             swiftSettings: [
