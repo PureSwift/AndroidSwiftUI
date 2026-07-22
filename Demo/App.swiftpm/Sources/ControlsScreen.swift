@@ -19,6 +19,9 @@ struct ControlsScreen: View {
     @State
     private var name = ""
 
+    @State
+    private var fruit = "Apple"
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -43,6 +46,14 @@ struct ControlsScreen: View {
                 Text("Text field")
                 TextField("Name", text: $name)
                 Text(name.isEmpty ? "Nothing typed yet" : "Hello, \(name)")
+                Divider()
+                Text("Picker")
+                Picker("Fruit", selection: $fruit) {
+                    Text("Apple").tag("Apple")
+                    Text("Banana").tag("Banana")
+                    Text("Cherry").tag("Cherry")
+                }
+                Text("Selected: \(fruit)")
             }
         }
     }
