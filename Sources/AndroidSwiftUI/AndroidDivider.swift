@@ -10,11 +10,11 @@ import AndroidKit
 extension Divider: AnyAndroidView {
 
     public func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
-        let view = AndroidView.View(context)
-        // hairline separator
+        // Material Design divider, colored with the theme's outline color
+        let view = MaterialDivider(context)
         let matchParent = try! JavaClass<ViewGroup.LayoutParams>().MATCH_PARENT
-        view.setLayoutParams(ViewGroup.LayoutParams(matchParent, 2))
-        view.setBackgroundColor(0x33_00_00_00) // ARGB translucent black
+        let wrapContent = try! JavaClass<ViewGroup.LayoutParams>().WRAP_CONTENT
+        view.setLayoutParams(ViewGroup.LayoutParams(matchParent, wrapContent))
         return view
     }
 
