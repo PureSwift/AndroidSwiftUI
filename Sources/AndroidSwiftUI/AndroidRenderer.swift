@@ -73,6 +73,7 @@ final class AndroidRenderer: Renderer {
                     return nil
                 }
                 let viewObject = anyView.createAndroidView(context)
+                applyStackLayoutParams(for: host.view, to: viewObject, in: parentView)
                 // TODO: Determine order
                 viewGroup.addView(viewObject)
                 if let transitioning = mapAnyView(host.view, transform: { (view: AndroidTransitioningView) in view }) {
@@ -232,6 +233,28 @@ final class AndroidRenderer: Renderer {
 }
 
 private extension AndroidRenderer {
+
+    /// Assigns layout parameters to a child added to a stack's `LinearLayout`.
+    ///
+    /// Children without their own parameters hug their content, so the stack's alignment
+    /// gravity can position them — Android's default of stretching children to match the
+    /// parent's width would leave gravity with no room to act. Views conforming to
+    /// `AndroidExpandingView` (such as `Spacer`) instead receive weighted parameters and
+    /// grow to fill the remaining space along the stack's axis.
+    func applyStackLayoutParams(for view: AnyView, to viewObject: AndroidView.View, in parentView: AndroidView.View) {
+        guard let linearLayout = parentView.as(AndroidWidget.LinearLayout.self) else { return }
+        let wrapContent = try! JavaClass<ViewGroup.LayoutParams>().WRAP_CONTENT
+        let isVertical = linearLayout.orientation == .vertical
+        if mapAnyView(view, transform: { (view: AndroidExpandingView) in view }) != nil {
+            let params = isVertical
+                ? AndroidWidget.LinearLayout.LayoutParams(wrapContent, 0, Float(1))
+                : AndroidWidget.LinearLayout.LayoutParams(0, wrapContent, Float(1))
+            viewObject.setLayoutParams(params.as(ViewGroup.LayoutParams.self))
+        } else if viewObject.getLayoutParams() == nil {
+            let params = AndroidWidget.LinearLayout.LayoutParams(wrapContent, wrapContent)
+            viewObject.setLayoutParams(params.as(ViewGroup.LayoutParams.self))
+        }
+    }
 
     /// Handler bound to the Android main looper, used to schedule reconciler updates.
     static let mainHandler = AndroidOS.Handler(try! JavaClass<AndroidOS.Looper>().getMainLooper())

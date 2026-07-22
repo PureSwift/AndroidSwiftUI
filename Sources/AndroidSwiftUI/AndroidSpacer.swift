@@ -7,16 +7,21 @@
 
 import AndroidKit
 
-extension Spacer: AnyAndroidView {
+/// An Android view that expands to fill the remaining space along its parent stack's axis.
+///
+/// The renderer assigns weighted layout parameters when a conforming view is added to a
+/// `LinearLayout`, so the view grows to absorb the leftover space.
+protocol AndroidExpandingView { }
 
-    // NOTE: does not yet flex-grow to fill remaining space in its parent stack (that would require
-    // AndroidRenderer's generic `addView` mounting to apply per-child LayoutParams, e.g. `layout_weight`,
-    // which it doesn't do today). Rendered as a minimal-size placeholder so layouts that include a
-    // `Spacer()` (e.g. List's internal row padding) still mount without crashing.
+extension Spacer: AnyAndroidView, AndroidExpandingView {
+
     public func createAndroidView(_ context: AndroidContent.Context) -> AndroidView.View {
         let view = AndroidView.View(context)
+        // the renderer applies weighted layout parameters inside stacks; the minimum
+        // dimensions preserve `minLength` in either axis
         let length = Int32(minLength ?? 0)
-        view.setLayoutParams(ViewGroup.LayoutParams(length, length))
+        view.setMinimumWidth(length)
+        view.setMinimumHeight(length)
         return view
     }
 
