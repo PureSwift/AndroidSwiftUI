@@ -18,6 +18,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -84,8 +94,10 @@ import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
@@ -112,18 +124,39 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
 
+/// The easing description a `withAnimation` tree carries on its root — while
+/// it is in scope, modifier folding eases changed numeric values instead of
+/// snapping them.
+internal data class AnimSpec(val curve: String, val durationMs: Int)
+
+internal val LocalAnimationSpec = compositionLocalOf<AnimSpec?> { null }
+
 /// Interprets a Swift-evaluated node tree into Material 3 composables.
 ///
 /// One `when` per node type; unknown types render a diagnostic so schema
 /// drift is visible rather than silent.
+///
+/// The animation provider is unconditional (inheriting when the node carries
+/// no spec of its own — only the root ever does) so that an animated tree
+/// arriving does not change the composition's structure: a branch switch here
+/// would tear down every remembered Animatable and snap instead of easing.
 @Composable
 fun Render(node: ViewNode) {
+    val spec = node.string("animationCurve")?.let {
+        AnimSpec(it, (node.double("animationDurationMs") ?: 350.0).toInt())
+    } ?: LocalAnimationSpec.current
+    CompositionLocalProvider(LocalAnimationSpec provides spec) { RenderResolved(node) }
+}
+
+@Composable
+private fun RenderResolved(node: ViewNode) {
     key(node.id) {
         RenderEffects(node)
         when (node.type) {
@@ -732,7 +765,16 @@ private fun fontWeightFor(name: String): FontWeight = when (name) {
 
 /// Folds a node's ordered modifier chain into a Compose `Modifier`.
 /// The chain arrives outermost-first, which is exactly Compose's order.
+///
+/// Numeric values fold through `animate*AsState` unconditionally so their
+/// internal state persists across trees; the spec is a tween/spring while an
+/// animation (explicit `withAnimation` tree, or this node's `.animation`
+/// modifier) applies, and `snap` otherwise.
+@Composable
 internal fun ViewNode.composeModifiers(): Modifier {
+    val implicit = modifiers.firstOrNull { it.kind == "animation" && it.args["curve"] != null }
+        ?.let { AnimSpec(it.args.string("curve") ?: "easeInOut", (it.args.double("durationMs") ?: 350.0).toInt()) }
+    val spec = implicit ?: LocalAnimationSpec.current
     var modifier: Modifier = Modifier
     for (entry in modifiers) {
         modifier = when (entry.kind) {
@@ -754,34 +796,34 @@ internal fun ViewNode.composeModifiers(): Modifier {
                 val width = entry.args.double("width")
                 val height = entry.args.double("height")
                 when {
-                    width != null && height != null -> modifier.size(width.dp, height.dp)
-                    width != null -> modifier.width(width.dp)
-                    height != null -> modifier.height(height.dp)
+                    width != null && height != null -> modifier.size(animatedDp(width.dp, spec), animatedDp(height.dp, spec))
+                    width != null -> modifier.width(animatedDp(width.dp, spec))
+                    height != null -> modifier.height(animatedDp(height.dp, spec))
                     else -> modifier
                 }
             }
 
             "background" -> {
                 val argb = entry.args.long("color") ?: 0
-                modifier.background(Color(argb.toInt()))
+                modifier.background(animatedColor(Color(argb.toInt()), spec))
             }
 
             "cornerRadius" -> {
                 val radius = entry.args.double("radius") ?: 0.0
-                modifier.clip(RoundedCornerShape(radius.dp))
+                modifier.clip(RoundedCornerShape(animatedDp(radius.dp, spec)))
             }
 
             "offset" -> {
                 val x = entry.args.double("x") ?: 0.0
                 val y = entry.args.double("y") ?: 0.0
-                modifier.offset { IntOffset((x.dp.value).toInt(), (y.dp.value).toInt()) }
+                modifier.offset(x = animatedDp(x.dp, spec), y = animatedDp(y.dp, spec))
             }
 
-            "rotation" -> modifier.rotate((entry.args.double("degrees") ?: 0.0).toFloat())
+            "rotation" -> modifier.rotate(animatedFloat((entry.args.double("degrees") ?: 0.0).toFloat(), spec))
 
-            "scale" -> modifier.scale((entry.args.double("scale") ?: 1.0).toFloat())
+            "scale" -> modifier.scale(animatedFloat((entry.args.double("scale") ?: 1.0).toFloat(), spec))
 
-            "opacity" -> modifier.alpha((entry.args.double("opacity") ?: 1.0).toFloat())
+            "opacity" -> modifier.alpha(animatedFloat((entry.args.double("opacity") ?: 1.0).toFloat(), spec))
 
             "border" -> {
                 val color = entry.args.long("color")?.let { Color(it.toInt()) } ?: Color.Black
@@ -816,6 +858,34 @@ internal fun ViewNode.composeModifiers(): Modifier {
         }
     }
     return modifier
+}
+
+// Always-called animated wrappers: the underlying Animatable persists across
+// recompositions, so a later tween eases from wherever the value currently is.
+
+@Composable
+private fun animatedDp(value: Dp, spec: AnimSpec?): Dp =
+    animateDpAsState(value, animationSpec(spec), label = "dp").value
+
+@Composable
+private fun animatedFloat(value: Float, spec: AnimSpec?): Float =
+    animateFloatAsState(value, animationSpec(spec), label = "float").value
+
+@Composable
+private fun animatedColor(value: Color, spec: AnimSpec?): Color =
+    animateColorAsState(value, animationSpec(spec), label = "color").value
+
+private fun <T> animationSpec(spec: AnimSpec?): AnimationSpec<T> = when {
+    spec == null -> snap()
+    spec.curve == "spring" -> spring()
+    else -> tween(spec.durationMs, easing = easingFor(spec.curve))
+}
+
+private fun easingFor(curve: String): Easing = when (curve) {
+    "linear" -> LinearEasing
+    "easeIn" -> CubicBezierEasing(0.42f, 0f, 1f, 1f)
+    "easeOut" -> CubicBezierEasing(0f, 0f, 0.58f, 1f)
+    else -> CubicBezierEasing(0.42f, 0f, 0.58f, 1f) // easeInOut
 }
 
 
