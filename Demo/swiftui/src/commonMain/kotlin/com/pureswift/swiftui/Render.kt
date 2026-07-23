@@ -409,7 +409,8 @@ private fun RenderResolved(node: ViewNode) {
 
 // Sheets and alerts ride as hidden children; the presentation layer shows
 // them, so the normal child loop skips them.
-private fun ViewNode.isPresentation(): Boolean = type == "Sheet" || type == "Alert"
+private fun ViewNode.isPresentation(): Boolean =
+    type == "Sheet" || type == "Alert" || type == "ConfirmationDialog"
 
 @Composable
 private fun RenderChildren(node: ViewNode) {
@@ -1297,6 +1298,53 @@ private fun RenderSheetsAndAlerts(screen: ViewNode?) {
                 }
             }
             "Alert" -> RenderAlert(child)
+            "ConfirmationDialog" -> RenderConfirmationDialog(child)
+        }
+    }
+}
+
+// An action sheet: a title/message header and one vertical button per choice,
+// destructive choices in the error color, presented from the bottom edge.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenderConfirmationDialog(node: ViewNode) {
+    val onDismiss = node.long("onDismiss")
+    val buttons = (node.props["buttons"] as? kotlinx.serialization.json.JsonArray) ?: kotlinx.serialization.json.JsonArray(emptyList())
+    val parsed = buttons.mapNotNull { entry ->
+        val arr = entry as? kotlinx.serialization.json.JsonArray ?: return@mapNotNull null
+        val title = (arr[0] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: return@mapNotNull null
+        val role = (arr[1] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "normal"
+        val id = (arr[2] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull() ?: return@mapNotNull null
+        Triple(title, role, id)
+    }
+    ModalBottomSheet(onDismissRequest = { onDismiss?.let { SwiftBridge.sink.invokeVoid(it) } }) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            val header = node.string("message")
+            if (node.string("showsTitle") == "true") {
+                Text(
+                    node.string("title") ?: "",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            }
+            if (header != null) {
+                Text(
+                    header,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            }
+            for ((title, role, id) in parsed) {
+                TextButton(
+                    onClick = { SwiftBridge.sink.invokeVoid(id) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        title,
+                        color = if (role == "destructive") MaterialTheme.colorScheme.error else Color.Unspecified,
+                    )
+                }
+            }
         }
     }
 }

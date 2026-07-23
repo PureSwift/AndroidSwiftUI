@@ -89,12 +89,14 @@ struct SheetBody: View {
 struct AlertPlayground: View {
     @State private var simple = false
     @State private var confirm = false
+    @State private var sheet = false
     @State private var result = "No choice yet"
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
                 Button("Show simple alert") { simple = true }
                 Button("Show confirmation") { confirm = true }
+                Button("Show confirmation dialog") { sheet = true }
                 Text(result)
             }
             .padding()
@@ -103,6 +105,14 @@ struct AlertPlayground: View {
         .alert("Delete item?", isPresented: $confirm, message: "This cannot be undone.", buttons: [
             AlertButton("Cancel", role: .cancel) { result = "Cancelled" },
             AlertButton("Delete", role: .destructive) { result = "Deleted" },
+        ])
+        .confirmationDialog("Manage item", isPresented: $sheet,
+                            titleVisibility: .visible,
+                            message: "Choose an action", buttons: [
+            AlertButton("Duplicate") { result = "Duplicated" },
+            AlertButton("Share") { result = "Shared" },
+            AlertButton("Delete", role: .destructive) { result = "Deleted from dialog" },
+            AlertButton("Cancel", role: .cancel) { result = "Dialog cancelled" },
         ])
     }
 }
