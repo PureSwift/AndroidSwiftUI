@@ -31,6 +31,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        registerDemoComposables()   // custom composables must be registered before the first render
         onCreateSwift(savedInstanceState)
         enableEdgeToEdge()
     }
