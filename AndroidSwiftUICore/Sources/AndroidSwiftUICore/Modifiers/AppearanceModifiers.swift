@@ -80,3 +80,20 @@ public extension View {
         modifier(_ClipShapeModifier(kind: shape._shapeKind, cornerRadius: shape._cornerRadius))
     }
 }
+
+// MARK: - Tint
+
+/// Sets the accent color for controls in the subtree (an environment value,
+/// like `.foregroundColor`).
+public struct _TintModifier: RenderModifier {
+    let color: Color
+    public var _modifierNode: ModifierNode {
+        ModifierNode(kind: "tint", args: ["color": color.propValue])
+    }
+}
+
+public extension View {
+    func tint(_ color: Color) -> ModifiedContent<Self, _TintModifier> {
+        modifier(_TintModifier(color: color))
+    }
+}
