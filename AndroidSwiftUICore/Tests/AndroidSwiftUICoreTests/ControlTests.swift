@@ -4,6 +4,7 @@
 //
 
 import Testing
+import Foundation
 @testable import AndroidSwiftUICore
 
 #if canImport(Observation)
@@ -194,4 +195,23 @@ struct ControlTests {
         #expect(node.props["text"] == .string("Coleman"))
     }
     #endif
+
+    @Test("DatePicker emits its selection in milliseconds and round-trips a change")
+    func datePicker() {
+        let initial = Date(timeIntervalSince1970: 1_768_435_200) // 2026-01-15T00:00:00Z
+        let changed = Date(timeIntervalSince1970: 1_772_323_200) // 2026-03-01T00:00:00Z
+        struct Screen: View {
+            @State var date: Date
+            var body: some View { DatePicker("Birthday", selection: $date) }
+        }
+        let host = ViewHost(Screen(date: initial))
+        var node = host.evaluate()
+        #expect(node.type == "DatePicker")
+        #expect(node.props["millis"] == .double(initial.timeIntervalSince1970 * 1000))
+        if case .int(let id)? = node.props["onChange"] {
+            host.callbacks.invokeDouble(Int64(id), changed.timeIntervalSince1970 * 1000)
+        }
+        node = host.evaluate()
+        #expect(node.props["millis"] == .double(changed.timeIntervalSince1970 * 1000))
+    }
 }

@@ -31,6 +31,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -247,6 +250,8 @@ fun Render(node: ViewNode) {
 
             "Menu" -> RenderMenu(node)
 
+            "DatePicker" -> RenderDatePicker(node)
+
             "Picker" -> RenderPicker(node)
 
             "NavStack" -> RenderNavStack(node)
@@ -378,6 +383,48 @@ private fun RenderSection(node: ViewNode) {
             )
         }
     }
+}
+
+// A label row with a trailing formatted-date button; tapping opens a Material3
+// date picker dialog. Selection round-trips as UTC epoch millis, matching both
+// Date's representation and DatePickerState's currency, so no conversion.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenderDatePicker(node: ViewNode) {
+    val onChange = node.long("onChange")
+    val millis = (node.double("millis") ?: 0.0).toLong()
+    var showDialog by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = node.composeModifiers().fillMaxWidth()) {
+        RenderChildren(node)
+        Spacer(modifier = Modifier.weight(1f))
+        TextButton(onClick = { showDialog = true }) { Text(formatDateMillis(millis)) }
+    }
+    if (showDialog) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = millis)
+        DatePickerDialog(
+            onDismissRequest = { showDialog = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    state.selectedDateMillis?.let { picked -> onChange?.let { SwiftBridge.sink.invokeDouble(it, picked.toDouble()) } }
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = state)
+        }
+    }
+}
+
+private val monthAbbreviations = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+private fun formatDateMillis(millis: Long): String {
+    val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+    calendar.timeInMillis = millis
+    val month = monthAbbreviations[calendar.get(java.util.Calendar.MONTH)]
+    val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    val year = calendar.get(java.util.Calendar.YEAR)
+    return "$month $day, $year"
 }
 
 // A trigger button opening a dropdown; each child Button becomes a menu item
