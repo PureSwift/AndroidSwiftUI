@@ -42,6 +42,7 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "form", title: "Form", screen: AnyCatalogScreen(FormPlayground())),
         CatalogEntry(id: "modifier", title: "Modifiers", screen: AnyCatalogScreen(ModifierPlayground())),
         CatalogEntry(id: "appearance", title: "Appearance", screen: AnyCatalogScreen(AppearancePlayground())),
+        CatalogEntry(id: "animation", title: "Animation", screen: AnyCatalogScreen(AnimationPlayground())),
         CatalogEntry(id: "interaction", title: "Interaction", screen: AnyCatalogScreen(InteractionPlayground())),
         CatalogEntry(id: "navigation", title: "Navigation", screen: AnyCatalogScreen(NavigationPlayground())),
         CatalogEntry(id: "tab", title: "TabView", screen: AnyCatalogScreen(TabViewPlayground())),
