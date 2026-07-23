@@ -33,6 +33,7 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "progress", title: "ProgressView", screen: AnyCatalogScreen(ProgressViewPlayground())),
         CatalogEntry(id: "morecontrols", title: "More Controls", screen: AnyCatalogScreen(MoreControlsPlayground())),
         CatalogEntry(id: "stack", title: "Stacks", screen: AnyCatalogScreen(StackPlayground())),
+        CatalogEntry(id: "frame", title: "Frames", screen: AnyCatalogScreen(FramePlayground())),
         CatalogEntry(id: "spacer", title: "Spacer & Divider", screen: AnyCatalogScreen(SpacerDividerPlayground())),
         CatalogEntry(id: "color", title: "Color", screen: AnyCatalogScreen(ColorPlayground())),
         CatalogEntry(id: "graphics", title: "Graphics", screen: AnyCatalogScreen(GraphicsPlayground())),
