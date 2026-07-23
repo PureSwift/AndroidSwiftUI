@@ -6,9 +6,20 @@ import SwiftUI
 
 struct StylePlayground: View {
     @State private var taps = 0
+    @State private var toggle = true
+    @State private var slider = 0.5
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                Example("Inherited tint") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Button("Tinted button") { taps += 1 }
+                        Toggle("Tinted toggle", isOn: $toggle)
+                        Slider(value: $slider, in: 0...1)
+                        ProgressView(value: slider)
+                    }
+                    .tint(.pink)
+                }
                 Example("Inherited font") {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("All three")
