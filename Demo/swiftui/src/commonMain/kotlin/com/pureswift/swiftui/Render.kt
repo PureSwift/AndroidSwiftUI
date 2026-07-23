@@ -224,9 +224,8 @@ private fun RenderResolved(node: ViewNode) {
                 val onTap = node.long("onTap")
                 val tint = LocalTint.current
                 Button(
-                    // own disabled and any inherited `.disabled` both apply
                     onClick = { onTap?.let { SwiftBridge.sink.invokeVoid(it) } },
-                    enabled = !node.isDisabled() && !LocalInheritedDisabled.current,
+                    enabled = node.isEnabled(),
                     colors = if (tint != null) ButtonDefaults.buttonColors(containerColor = tint) else ButtonDefaults.buttonColors(),
                     modifier = node.composeModifiers(),
                 ) {
@@ -242,6 +241,7 @@ private fun RenderResolved(node: ViewNode) {
                     Switch(
                         checked = node.bool("isOn") ?: false,
                         onCheckedChange = { onChange?.let { id -> SwiftBridge.sink.invokeBool(id, it) } },
+                        enabled = node.isEnabled(),
                         colors = if (tint != null) SwitchDefaults.colors(checkedTrackColor = tint) else SwitchDefaults.colors(),
                     )
                 }
@@ -349,6 +349,7 @@ private fun RenderResolved(node: ViewNode) {
                     value = (node.double("value") ?: 0.0).toFloat(),
                     onValueChange = { onChange?.let { id -> SwiftBridge.sink.invokeDouble(id, it.toDouble()) } },
                     valueRange = min..max,
+                    enabled = node.isEnabled(),
                     colors = if (tint != null) SliderDefaults.colors(thumbColor = tint, activeTrackColor = tint) else SliderDefaults.colors(),
                     modifier = node.composeModifiers().fillMaxWidth(),
                 )
@@ -432,6 +433,7 @@ private fun RenderTextField(node: ViewNode) {
             }
         },
         label = { Text(node.string("placeholder") ?: "") },
+        enabled = node.isEnabled(),
         visualTransformation = if (node.bool("secure") == true) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = node.composeModifiers().fillMaxWidth(),
     )
@@ -442,11 +444,12 @@ private fun RenderTextField(node: ViewNode) {
 private fun RenderStepper(node: ViewNode) {
     val onIncrement = node.long("onIncrement")
     val onDecrement = node.long("onDecrement")
+    val enabled = node.isEnabled()
     Row(verticalAlignment = Alignment.CenterVertically, modifier = node.composeModifiers().fillMaxWidth()) {
         RenderChildren(node)
         Spacer(modifier = Modifier.weight(1f))
-        TextButton(onClick = { onDecrement?.let { SwiftBridge.sink.invokeVoid(it) } }) { Text("−", fontSize = 20.sp) }
-        TextButton(onClick = { onIncrement?.let { SwiftBridge.sink.invokeVoid(it) } }) { Text("+", fontSize = 20.sp) }
+        TextButton(onClick = { onDecrement?.let { SwiftBridge.sink.invokeVoid(it) } }, enabled = enabled) { Text("−", fontSize = 20.sp) }
+        TextButton(onClick = { onIncrement?.let { SwiftBridge.sink.invokeVoid(it) } }, enabled = enabled) { Text("+", fontSize = 20.sp) }
     }
 }
 
@@ -507,7 +510,7 @@ private fun RenderDatePicker(node: ViewNode) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = node.composeModifiers().fillMaxWidth()) {
         RenderChildren(node)
         Spacer(modifier = Modifier.weight(1f))
-        TextButton(onClick = { showDialog = true }) { Text(formatDateMillis(millis)) }
+        TextButton(onClick = { showDialog = true }, enabled = node.isEnabled()) { Text(formatDateMillis(millis)) }
     }
     if (showDialog) {
         val state = rememberDatePickerState(initialSelectedDateMillis = millis)
@@ -543,7 +546,7 @@ private fun formatDateMillis(millis: Long): String {
 private fun RenderMenu(node: ViewNode) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        TextButton(onClick = { expanded = true }) { Text(node.string("label") ?: "") }
+        TextButton(onClick = { expanded = true }, enabled = node.isEnabled()) { Text(node.string("label") ?: "") }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             for (child in node.children) {
                 if (child.isPresentation()) continue
@@ -575,7 +578,7 @@ private fun RenderPicker(node: ViewNode) {
     Row(modifier = node.composeModifiers().fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(node.string("title") ?: "")
         Spacer(modifier = Modifier.weight(1f))
-        TextButton(onClick = { expanded = true }) { Text(currentLabel) }
+        TextButton(onClick = { expanded = true }, enabled = node.isEnabled()) { Text(currentLabel) }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             for ((value, label) in options) {
                 DropdownMenuItem(text = { Text(label) }, onClick = {
@@ -673,6 +676,11 @@ private fun RenderEffects(node: ViewNode) {
 
 private fun ViewNode.isDisabled(): Boolean =
     modifiers.any { it.kind == "disabled" && (it.args["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true" }
+
+// A control is enabled unless its own `.disabled(true)` or an inherited one
+// (from an ancestor container) is in scope.
+@Composable
+private fun ViewNode.isEnabled(): Boolean = !isDisabled() && !LocalInheritedDisabled.current
 
 // A shape fills its (frame-derived) size with its fill color; without a frame
 // it collapses to zero, matching this backend's no-layout-engine limitation.
