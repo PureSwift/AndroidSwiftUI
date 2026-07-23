@@ -157,13 +157,21 @@ internal val LocalInheritedDisabled = compositionLocalOf { false }
 /// arriving does not change the composition's structure: a branch switch here
 /// would tear down every remembered Animatable and snap instead of easing.
 @Composable
-fun Render(node: ViewNode) {
+fun Render(node: ViewNode) = RenderChild(node)
+
+/// The real entry point, shared by the public `Render` and the composable
+/// registry's child slot. The registry MUST call this directly rather than the
+/// public `Render`: a nested call to a public composable from a dynamically-
+/// invoked factory slot has its restart group skipped by the Compose runtime,
+/// so the whole subtree silently fails to compose. Routing through this
+/// internal function composes reliably. It also folds the node's own style
+/// modifiers into the inherited environment so its subtree sees them.
+@Composable
+internal fun RenderChild(node: ViewNode) {
     val spec = node.string("animationCurve")?.let {
         AnimSpec(it, (node.double("animationDurationMs") ?: 350.0).toInt())
     } ?: LocalAnimationSpec.current
 
-    // Fold this node's own style modifiers into the inherited environment so
-    // its subtree sees them.
     var fontSize = LocalInheritedFontSize.current
     var fontWeight = LocalInheritedFontWeight.current
     var color = LocalInheritedColor.current
