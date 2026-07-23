@@ -163,3 +163,89 @@ public extension View {
         _AlertView(title: String(title), isPresented: isPresented, message: message, buttons: buttons, content: self)
     }
 }
+
+// MARK: - Confirmation dialog
+
+/// Whether a chrome element is shown. Mirrors SwiftUI's `Visibility`; here it
+/// only governs a confirmation dialog's title.
+public enum Visibility: Sendable {
+    case automatic, visible, hidden
+}
+
+/// An action sheet of choices presented from the bottom of the screen while
+/// `isPresented` is true. Like `alert`, each button writes the bound flag back
+/// to false, but any number of buttons are laid out vertically.
+public struct _ConfirmationDialogView<Content: View>: View {
+    internal let title: String
+    internal let titleVisibility: Visibility
+    internal let isPresented: Binding<Bool>
+    internal let message: String?
+    internal let buttons: [AlertButton]
+    internal let content: Content
+    public typealias Body = Never
+}
+
+extension _ConfirmationDialogView: PrimitiveView {
+
+    public func _render(in context: ResolveContext) -> RenderNode {
+        var node = Evaluator.resolve(content, context.descending("content"))
+        guard isPresented.wrappedValue else { return node }
+
+        let binding = isPresented
+        var buttonNodes: [PropValue] = []
+        for button in buttons {
+            let action = button.action
+            let id = context.callbacks.register(.void {
+                action()
+                binding.wrappedValue = false
+            })
+            buttonNodes.append(.array([
+                .string(button.title),
+                .string(role(button.role)),
+                .int(Int(id)),
+            ]))
+        }
+        let dismissID = context.callbacks.register(.void { binding.wrappedValue = false })
+
+        // The title only shows when explicitly made visible (matching iOS, where
+        // a confirmation dialog hides its title by default).
+        var props: [String: PropValue] = [
+            "title": .string(title),
+            "showsTitle": .bool(titleVisibility == .visible),
+            "buttons": .array(buttonNodes),
+            "onDismiss": .int(Int(dismissID)),
+        ]
+        if let message { props["message"] = .string(message) }
+
+        node.children.append(RenderNode(type: "ConfirmationDialog", id: context.path + "/confirmationDialog", props: props))
+        node.props["hasConfirmationDialog"] = .bool(true)
+        return node
+    }
+
+    private func role(_ role: AlertButton.Role) -> String {
+        switch role {
+        case .normal: return "normal"
+        case .cancel: return "cancel"
+        case .destructive: return "destructive"
+        }
+    }
+}
+
+public extension View {
+    func confirmationDialog<S: StringProtocol>(
+        _ title: S,
+        isPresented: Binding<Bool>,
+        titleVisibility: Visibility = .automatic,
+        message: String? = nil,
+        buttons: [AlertButton]
+    ) -> _ConfirmationDialogView<Self> {
+        _ConfirmationDialogView(
+            title: String(title),
+            titleVisibility: titleVisibility,
+            isPresented: isPresented,
+            message: message,
+            buttons: buttons,
+            content: self
+        )
+    }
+}
