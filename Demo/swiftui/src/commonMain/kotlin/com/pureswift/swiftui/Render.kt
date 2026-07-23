@@ -138,6 +138,15 @@ internal data class AnimSpec(val curve: String, val durationMs: Int)
 
 internal val LocalAnimationSpec = compositionLocalOf<AnimSpec?> { null }
 
+// Inherited style environment (SwiftUI's `.font`/`.foregroundColor`/`.disabled`
+// set values for a whole subtree). A node folds its own such modifiers into
+// these before rendering its children; leaves consume them as defaults that
+// their own modifiers still override.
+internal val LocalInheritedFontSize = compositionLocalOf { TextUnit.Unspecified }
+internal val LocalInheritedFontWeight = compositionLocalOf<FontWeight?> { null }
+internal val LocalInheritedColor = compositionLocalOf { Color.Unspecified }
+internal val LocalInheritedDisabled = compositionLocalOf { false }
+
 /// Interprets a Swift-evaluated node tree into Material 3 composables.
 ///
 /// One `when` per node type; unknown types render a diagnostic so schema
@@ -152,7 +161,36 @@ fun Render(node: ViewNode) {
     val spec = node.string("animationCurve")?.let {
         AnimSpec(it, (node.double("animationDurationMs") ?: 350.0).toInt())
     } ?: LocalAnimationSpec.current
-    CompositionLocalProvider(LocalAnimationSpec provides spec) { RenderResolved(node) }
+
+    // Fold this node's own style modifiers into the inherited environment so
+    // its subtree sees them.
+    var fontSize = LocalInheritedFontSize.current
+    var fontWeight = LocalInheritedFontWeight.current
+    var color = LocalInheritedColor.current
+    var disabled = LocalInheritedDisabled.current
+    for (m in node.modifiers) {
+        when (m.kind) {
+            "font" -> {
+                m.args.string("style")?.let {
+                    fontSize = fontSizeForStyle(it).sp
+                    fontWeight = defaultWeightForStyle(it)
+                }
+                m.args.double("size")?.let { fontSize = it.sp }
+                m.args.string("weight")?.let { fontWeight = fontWeightFor(it) }
+            }
+            "fontWeight" -> m.args.string("weight")?.let { fontWeight = fontWeightFor(it) }
+            "foregroundColor" -> m.args.long("color")?.let { color = Color(it.toInt()) }
+            "disabled" -> if ((m.args["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true") disabled = true
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalAnimationSpec provides spec,
+        LocalInheritedFontSize provides fontSize,
+        LocalInheritedFontWeight provides fontWeight,
+        LocalInheritedColor provides color,
+        LocalInheritedDisabled provides disabled,
+    ) { RenderResolved(node) }
 }
 
 @Composable
@@ -165,8 +203,9 @@ private fun RenderResolved(node: ViewNode) {
             "Button" -> {
                 val onTap = node.long("onTap")
                 Button(
+                    // own disabled and any inherited `.disabled` both apply
                     onClick = { onTap?.let { SwiftBridge.sink.invokeVoid(it) } },
-                    enabled = !node.isDisabled(),
+                    enabled = !node.isDisabled() && !LocalInheritedDisabled.current,
                     modifier = node.composeModifiers(),
                 ) {
                     RenderChildren(node)
@@ -744,9 +783,10 @@ private fun materialIcon(name: String): ImageVector? = when (name) {
 // attributes. Layout modifiers in the same chain still apply via composeModifiers().
 @Composable
 private fun RenderText(node: ViewNode) {
-    var color = Color.Unspecified
-    var fontSize: TextUnit = TextUnit.Unspecified
-    var weight: FontWeight? = null
+    // Start from the inherited environment; the node's own modifiers override.
+    var color = LocalInheritedColor.current
+    var fontSize: TextUnit = LocalInheritedFontSize.current
+    var weight: FontWeight? = LocalInheritedFontWeight.current
     var fontStyle: FontStyle? = null
     var maxLines = Int.MAX_VALUE
     var textAlign: TextAlign? = null
