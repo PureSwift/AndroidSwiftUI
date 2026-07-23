@@ -76,6 +76,45 @@ struct ControlTests {
         #expect(node.props["selection"] == .string("Banana"))
     }
 
+    @Test("Stepper increments and decrements within bounds, updating its label")
+    func stepper() {
+        struct Screen: View {
+            @State var count = 5
+            var body: some View { Stepper("Count: \(count)", value: $count, in: 0...10) }
+        }
+        let host = ViewHost(Screen())
+        var node = host.evaluate()
+        #expect(node.type == "Stepper")
+        if case .int(let inc)? = node.props["onIncrement"] { host.callbacks.invokeVoid(Int64(inc)) }
+        node = host.evaluate()
+        #expect(firstTextString(node) == "Count: 6")
+        if case .int(let dec)? = node.props["onDecrement"] { host.callbacks.invokeVoid(Int64(dec)) }
+        node = host.evaluate()
+        #expect(firstTextString(node) == "Count: 5")
+    }
+
+    @Test("SecureField emits a secure TextField node")
+    func secureField() {
+        struct Screen: View {
+            @State var password = ""
+            var body: some View { SecureField("Password", text: $password) }
+        }
+        let node = ViewHost(Screen()).evaluate()
+        #expect(node.type == "TextField")
+        #expect(node.props["secure"] == .bool(true))
+    }
+
+    @Test("Menu emits its label and item children")
+    func menu() {
+        let node = ViewHost(Menu("Options") {
+            Button("First") {}
+            Button("Second") {}
+        }).evaluate()
+        #expect(node.type == "Menu")
+        #expect(node.props["label"] == .string("Options"))
+        #expect(node.children.count == 2)
+    }
+
     @Test("Environment objects reach @Environment properties in the subtree")
     func environmentInjection() {
         final class Model { var value = 42 }
