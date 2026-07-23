@@ -100,7 +100,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntOffset
@@ -223,6 +225,10 @@ fun Render(node: ViewNode) {
 
             "TextField" -> RenderTextField(node)
 
+            "Stepper" -> RenderStepper(node)
+
+            "Menu" -> RenderMenu(node)
+
             "Picker" -> RenderPicker(node)
 
             "NavStack" -> RenderNavStack(node)
@@ -289,8 +295,45 @@ private fun RenderTextField(node: ViewNode) {
             }
         },
         label = { Text(node.string("placeholder") ?: "") },
+        visualTransformation = if (node.bool("secure") == true) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = node.composeModifiers().fillMaxWidth(),
     )
+}
+
+// Label, then − / + edge buttons pushed to the trailing side.
+@Composable
+private fun RenderStepper(node: ViewNode) {
+    val onIncrement = node.long("onIncrement")
+    val onDecrement = node.long("onDecrement")
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = node.composeModifiers().fillMaxWidth()) {
+        RenderChildren(node)
+        Spacer(modifier = Modifier.weight(1f))
+        TextButton(onClick = { onDecrement?.let { SwiftBridge.sink.invokeVoid(it) } }) { Text("−", fontSize = 20.sp) }
+        TextButton(onClick = { onIncrement?.let { SwiftBridge.sink.invokeVoid(it) } }) { Text("+", fontSize = 20.sp) }
+    }
+}
+
+// A trigger button opening a dropdown; each child Button becomes a menu item
+// firing its own tap callback.
+@Composable
+private fun RenderMenu(node: ViewNode) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { expanded = true }) { Text(node.string("label") ?: "") }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            for (child in node.children) {
+                if (child.isPresentation()) continue
+                val onTap = child.long("onTap")
+                DropdownMenuItem(
+                    text = { Text(pickerLabel(child)) },
+                    onClick = {
+                        expanded = false
+                        onTap?.let { SwiftBridge.sink.invokeVoid(it) }
+                    },
+                )
+            }
+        }
+    }
 }
 
 @Composable
