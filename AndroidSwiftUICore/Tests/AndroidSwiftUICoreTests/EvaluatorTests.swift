@@ -291,6 +291,20 @@ struct GraphicsTests {
         #expect(firstTextString(node.children.first ?? node) == "inside")
     }
 
+    @Test("ComposableView actions register callbacks the factory can invoke")
+    func composableViewActions() {
+        var received = 0.0
+        let host = ViewHost(
+            ComposableView("RatingBar", actions: ["onRatingChanged": .double { received = $0 }])
+        )
+        let node = host.evaluate()
+        guard case .int(let id)? = node.props["onRatingChanged"] else {
+            Issue.record("missing action id"); return
+        }
+        host.callbacks.invokeDouble(Int64(id), 4.5)
+        #expect(received == 4.5)
+    }
+
     @Test("Overlay emits base and overlay children with alignment")
     func overlay() {
         let node = ViewHost(Color.blue.overlay(alignment: .bottomTrailing) { Text("badge") }).evaluate()
