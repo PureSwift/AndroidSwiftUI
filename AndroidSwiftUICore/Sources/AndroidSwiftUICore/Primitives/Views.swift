@@ -162,6 +162,38 @@ extension TextField: PrimitiveView {
     }
 }
 
+/// A text field that obscures its contents. Shares the TextField node with a
+/// `secure` flag; the interpreter applies a password transformation.
+public struct SecureField: View {
+
+    internal let placeholder: String
+    internal let text: Binding<String>
+
+    public init<S: StringProtocol>(_ placeholder: S, text: Binding<String>) {
+        self.placeholder = String(placeholder)
+        self.text = text
+    }
+
+    public typealias Body = Never
+}
+
+extension SecureField: PrimitiveView {
+    public func _render(in context: ResolveContext) -> RenderNode {
+        let binding = text
+        let callbackID = context.callbacks.register(.string { binding.wrappedValue = $0 })
+        return RenderNode(
+            type: "TextField",
+            id: context.path,
+            props: [
+                "text": .string(text.wrappedValue),
+                "placeholder": .string(placeholder),
+                "onChange": .int(Int(callbackID)),
+                "secure": .bool(true),
+            ]
+        )
+    }
+}
+
 /// Eager stand-ins: laziness is an optimization the lazy container path (R7)
 /// provides; semantics match the eager stacks.
 public typealias LazyVStack = VStack
