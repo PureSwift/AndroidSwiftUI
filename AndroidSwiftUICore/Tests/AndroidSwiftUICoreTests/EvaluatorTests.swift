@@ -194,6 +194,22 @@ struct ModifierTests {
         #expect(node.modifiers.contains { $0.kind == "onDisappear" })
     }
 
+    @Test("task emits start and cancel callback ids that drive the same Task")
+    func taskStartAndCancel() async {
+        let host = ViewHost(Text("x").task { try? await Task.sleep(nanoseconds: 10_000_000_000) })
+        let node = host.evaluate()
+        let task = node.modifiers.first { $0.kind == "task" }
+        guard case .int(let start)? = task?.args["start"],
+              case .int(let cancel)? = task?.args["cancel"] else {
+            Issue.record("missing start/cancel ids"); return
+        }
+        #expect(start != cancel)
+        host.callbacks.invokeVoid(Int64(start))          // launches the Task
+        #expect(!_TaskRegistry.running.isEmpty)
+        host.callbacks.invokeVoid(Int64(cancel))         // cancels and clears it
+        #expect(_TaskRegistry.running.isEmpty)
+    }
+
     @Test("onChange emits a token describing the observed value")
     func onChange() {
         let node = ViewHost(Text("x").onChange(of: 42) {}).evaluate()

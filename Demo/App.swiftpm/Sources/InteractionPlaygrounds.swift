@@ -10,6 +10,8 @@ struct InteractionPlayground: View {
     @State private var slider = 0.0
     @State private var sliderChanges = 0
     @State private var blocked = true
+    @State private var ticking = false
+    @State private var ticks = 0
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -34,6 +36,26 @@ struct InteractionPlayground: View {
                         Text("Slider changed \(sliderChanges) time(s)")
                     }
                     .onChange(of: slider) { sliderChanges += 1 }
+                }
+                Example(".task (cancels on disappear)") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Ticks: \(ticks)")
+                        Button(ticking ? "Hide (cancels task)" : "Show") { ticking.toggle() }
+                        if ticking {
+                            Text("Ticking every 0.5s while visible")
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.green)
+                                .cornerRadius(8)
+                                .task {
+                                    while true {
+                                        do { try await Task.sleep(nanoseconds: 500_000_000) }
+                                        catch { break }   // cancelled on disappear → stop
+                                        ticks += 1
+                                    }
+                                }
+                        }
+                    }
                 }
                 Example("disabled") {
                     VStack(alignment: .leading, spacing: 8) {

@@ -764,7 +764,9 @@ private fun zStackAlignment(node: ViewNode): Alignment {
 private fun RenderEffects(node: ViewNode) {
     val onAppear = node.modifiers.firstOrNull { it.kind == "onAppear" }?.args?.long("action")
     val onDisappear = node.modifiers.firstOrNull { it.kind == "onDisappear" }?.args?.long("action")
-    val task = node.modifiers.firstOrNull { it.kind == "task" }?.args?.long("action")
+    val taskMod = node.modifiers.firstOrNull { it.kind == "task" }
+    val taskStart = taskMod?.args?.long("start")
+    val taskCancel = taskMod?.args?.long("cancel")
     val onChange = node.modifiers.firstOrNull { it.kind == "onChange" }
 
     if (onAppear != null || onDisappear != null) {
@@ -773,8 +775,16 @@ private fun RenderEffects(node: ViewNode) {
             onDispose { onDisappear?.let { SwiftBridge.sink.invokeVoid(it) } }
         }
     }
-    if (task != null) {
-        LaunchedEffect(Unit) { SwiftBridge.sink.invokeVoid(task) }
+    if (taskStart != null && taskCancel != null) {
+        // The cancel id changes each evaluation; onDispose can fire generations
+        // after appear, so hand it the freshest id (kept in a remembered holder)
+        // — still resolvable, and it cancels by stable path regardless.
+        val cancelHolder = remember { longArrayOf(taskCancel) }
+        cancelHolder[0] = taskCancel
+        DisposableEffect(Unit) {
+            SwiftBridge.sink.invokeVoid(taskStart)
+            onDispose { SwiftBridge.sink.invokeVoid(cancelHolder[0]) }
+        }
     }
     if (onChange != null) {
         val token = onChange.args.string("token")
