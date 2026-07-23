@@ -54,6 +54,7 @@ import androidx.compose.foundation.layout.Column as LayoutColumn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -306,13 +307,24 @@ private fun RenderResolved(node: ViewNode) {
             "Divider" -> HorizontalDivider(modifier = node.composeModifiers())
 
             "ScrollView" -> {
-                val state = rememberScrollState()
-                if (node.string("axis") == "horizontal") {
-                    Row(modifier = node.composeModifiers().horizontalScroll(state)) { RenderChildren(node) }
+                // A lazy stack scrolls itself, and nesting it inside a scrolling
+                // parent would measure it with unbounded height (a Compose
+                // crash), so hand the scrolling over to it.
+                val lone = node.children.singleOrNull { !it.isPresentation() }
+                if (lone != null && lone.isLazyStack()) {
+                    RenderChild(lone)
                 } else {
-                    Column(modifier = node.composeModifiers().verticalScroll(state)) { RenderChildren(node) }
+                    val state = rememberScrollState()
+                    if (node.string("axis") == "horizontal") {
+                        Row(modifier = node.composeModifiers().horizontalScroll(state)) { RenderChildren(node) }
+                    } else {
+                        Column(modifier = node.composeModifiers().verticalScroll(state)) { RenderChildren(node) }
+                    }
                 }
             }
+
+            "LazyVStack" -> RenderLazyStack(node, vertical = true)
+            "LazyHStack" -> RenderLazyStack(node, vertical = false)
 
             // A Color greedily fills the space offered it (SwiftUI semantics);
             // fillMaxWidth is applied after the chain so an explicit frame width
@@ -1553,6 +1565,54 @@ private fun ViewNode.stringArray(key: String): List<String> {
     return arr.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
 }
 
+
+private fun ViewNode.isLazyStack(): Boolean = type == "LazyVStack" || type == "LazyHStack"
+
+// A lazy stack fetches only the elements Compose asks for, one JNI call each.
+// Content that wasn't a single ForEach carries no provider and renders eagerly.
+@Composable
+private fun RenderLazyStack(node: ViewNode, vertical: Boolean) {
+    val provider = node.long("itemProvider")
+    if (provider == null) {
+        if (vertical) Column(modifier = node.composeModifiers()) { RenderChildren(node) }
+        else Row(modifier = node.composeModifiers()) { RenderChildren(node) }
+        return
+    }
+    val count = node.count ?: 0
+    val keys = node.stringArray("keys")
+    val spacing = (node.double("spacing") ?: 0.0).dp
+    if (vertical) {
+        LazyColumn(
+            modifier = node.composeModifiers().fillMaxWidth(),
+            horizontalAlignment = when (node.string("alignment")) {
+                "leading" -> Alignment.Start
+                "trailing" -> Alignment.End
+                else -> Alignment.CenterHorizontally
+            },
+            verticalArrangement = Arrangement.spacedBy(spacing),
+        ) {
+            items(count = count, key = { keys.getOrNull(it) ?: it }) { index ->
+                val element = remember(provider, index) { SwiftBridge.sink.itemNode(provider, index) }
+                element?.let { RenderChild(it) }
+            }
+        }
+    } else {
+        LazyRow(
+            modifier = node.composeModifiers(),
+            verticalAlignment = when (node.string("alignment")) {
+                "top" -> Alignment.Top
+                "bottom" -> Alignment.Bottom
+                else -> Alignment.CenterVertically
+            },
+            horizontalArrangement = Arrangement.spacedBy(spacing),
+        ) {
+            items(count = count, key = { keys.getOrNull(it) ?: it }) { index ->
+                val element = remember(provider, index) { SwiftBridge.sink.itemNode(provider, index) }
+                element?.let { RenderChild(it) }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
