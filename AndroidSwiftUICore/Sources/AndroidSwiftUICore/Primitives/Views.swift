@@ -43,14 +43,22 @@ extension Color: PrimitiveView {
     }
 }
 
-/// An image referenced by name. Rendering is placeholder-level until an asset
-/// pipeline exists.
+/// An image. `Image(systemName:)` maps a curated set of SF Symbol names to
+/// Material icons in the interpreter; a named asset stays placeholder-level
+/// until an asset pipeline exists.
 public struct Image: View {
 
     internal let name: String
+    internal let systemName: String?
 
     public init(_ name: String) {
         self.name = name
+        self.systemName = nil
+    }
+
+    public init(systemName: String) {
+        self.name = systemName
+        self.systemName = systemName
     }
 
     public typealias Body = Never
@@ -58,7 +66,9 @@ public struct Image: View {
 
 extension Image: PrimitiveView {
     public func _render(in context: ResolveContext) -> RenderNode {
-        RenderNode(type: "Image", id: context.path, props: ["name": .string(name)])
+        var props: [String: PropValue] = ["name": .string(name)]
+        if let systemName { props["systemName"] = .string(systemName) }
+        return RenderNode(type: "Image", id: context.path, props: props)
     }
 }
 
