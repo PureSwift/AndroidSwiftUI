@@ -1243,11 +1243,53 @@ private fun RenderNavStack(node: ViewNode) {
             label = "nav",
         ) { index ->
             LayoutColumn(modifier = Modifier.padding(padding)) {
+                node.searchField(index)?.let { RenderSearchField(it, index) }
                 node.children.getOrNull(index)?.let { Render(it) }
             }
         }
     }
     RenderSheetsAndAlerts(node.children.getOrNull(topIndex))
+}
+
+private class SearchFieldSpec(val text: String, val callbackId: Long, val prompt: String)
+
+// A screen's `searchable` descriptor: [text, callbackId, prompt], or an empty
+// array when that screen declared none.
+private fun ViewNode.searchField(index: Int): SearchFieldSpec? {
+    val searches = props["searches"] as? kotlinx.serialization.json.JsonArray ?: return null
+    val entry = searches.getOrNull(index) as? kotlinx.serialization.json.JsonArray ?: return null
+    if (entry.size < 3) return null
+    val text = (entry[0] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: ""
+    val id = (entry[1] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull() ?: return null
+    val prompt = (entry[2] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: ""
+    return SearchFieldSpec(text, id, prompt)
+}
+
+// Same uncontrolled-with-reconciliation scheme as RenderTextField, keyed by the
+// stable screen index (the callback id churns each evaluation, so it can't key
+// the remembered cursor state).
+@Composable
+private fun RenderSearchField(spec: SearchFieldSpec, index: Int) {
+    var local by remember(index) { mutableStateOf(TextFieldValue(spec.text)) }
+    var lastSent by remember(index) { mutableStateOf(spec.text) }
+    if (spec.text != lastSent) {
+        local = TextFieldValue(spec.text, selection = androidx.compose.ui.text.TextRange(spec.text.length))
+        lastSent = spec.text
+    }
+    OutlinedTextField(
+        value = local,
+        onValueChange = { v ->
+            local = v
+            if (v.text != lastSent) {
+                lastSent = v.text
+                SwiftBridge.sink.invokeString(spec.callbackId, v.text)
+            }
+        },
+        placeholder = { Text(spec.prompt.ifEmpty { "Search" }) },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+    )
 }
 
 @Composable
