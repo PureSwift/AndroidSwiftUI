@@ -112,6 +112,11 @@ public protocol _ResolutionEffectView {
 public final class TitleSink {
     public var title: String?
     public var detents: [PresentationDetent] = []
+    /// A `searchable` declared inside the screen: current text, the string
+    /// callback its field pushes to, and an optional placeholder prompt.
+    public var searchText: String?
+    public var searchCallbackID: Int64?
+    public var searchPrompt: String?
     public init() {}
 }
 
