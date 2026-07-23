@@ -84,3 +84,5 @@ internal fun JsonObject.double(key: String): Double? = (this[key] as? JsonPrimit
 internal fun JsonObject.long(key: String): Long? = (this[key] as? JsonPrimitive)?.longOrNull
 
 internal fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.content
+
+internal fun JsonObject.bool(key: String): Boolean? = (this[key] as? JsonPrimitive)?.booleanOrNull
