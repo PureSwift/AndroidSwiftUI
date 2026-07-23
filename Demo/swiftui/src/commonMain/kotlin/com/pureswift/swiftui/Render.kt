@@ -1,6 +1,7 @@
 package com.pureswift.swiftui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
@@ -50,6 +51,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -83,6 +85,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 @Composable
 fun Render(node: ViewNode) {
     key(node.id) {
+        RenderEffects(node)
         when (node.type) {
             "Text" -> RenderText(node)
 
@@ -90,6 +93,7 @@ fun Render(node: ViewNode) {
                 val onTap = node.long("onTap")
                 Button(
                     onClick = { onTap?.let { SwiftBridge.sink.invokeVoid(it) } },
+                    enabled = !node.isDisabled(),
                     modifier = node.composeModifiers(),
                 ) {
                     RenderChildren(node)
@@ -334,6 +338,40 @@ private fun zStackAlignment(node: ViewNode): Alignment {
     }
 }
 
+// Lifecycle modifiers (onAppear/onDisappear/task/onChange) install Compose
+// effects rather than folding into the Modifier chain. Keyed within the node's
+// `key(id)` scope, so onAppear fires once on entry and onDisappear on exit,
+// surviving recomposition.
+@Composable
+private fun RenderEffects(node: ViewNode) {
+    val onAppear = node.modifiers.firstOrNull { it.kind == "onAppear" }?.args?.long("action")
+    val onDisappear = node.modifiers.firstOrNull { it.kind == "onDisappear" }?.args?.long("action")
+    val task = node.modifiers.firstOrNull { it.kind == "task" }?.args?.long("action")
+    val onChange = node.modifiers.firstOrNull { it.kind == "onChange" }
+
+    if (onAppear != null || onDisappear != null) {
+        DisposableEffect(Unit) {
+            onAppear?.let { SwiftBridge.sink.invokeVoid(it) }
+            onDispose { onDisappear?.let { SwiftBridge.sink.invokeVoid(it) } }
+        }
+    }
+    if (task != null) {
+        LaunchedEffect(Unit) { SwiftBridge.sink.invokeVoid(task) }
+    }
+    if (onChange != null) {
+        val token = onChange.args.string("token")
+        val action = onChange.args.long("action")
+        // skip the initial composition; fire when the token changes thereafter
+        var primed by remember(node.id) { mutableStateOf(false) }
+        LaunchedEffect(token) {
+            if (primed) action?.let { SwiftBridge.sink.invokeVoid(it) } else primed = true
+        }
+    }
+}
+
+private fun ViewNode.isDisabled(): Boolean =
+    modifiers.any { it.kind == "disabled" && (it.args["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true" }
+
 // Text-styling modifiers describe attributes of the Text composable itself,
 // not the layout Modifier chain, so they are read off the node here and passed
 // as `Text(...)` parameters. Later (innermost) entries win for scalar
@@ -464,6 +502,18 @@ internal fun ViewNode.composeModifiers(): Modifier {
             "scale" -> modifier.scale((entry.args.double("scale") ?: 1.0).toFloat())
 
             "opacity" -> modifier.alpha((entry.args.double("opacity") ?: 1.0).toFloat())
+
+            "onTapGesture" -> {
+                val id = entry.args.long("action")
+                if (id != null) modifier.clickable { SwiftBridge.sink.invokeVoid(id) } else modifier
+            }
+
+            // Dim disabled content; controls also drop interactivity via their
+            // own `enabled` parameter (e.g. Button).
+            "disabled" -> {
+                val off = (entry.args["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true"
+                if (off) modifier.alpha(0.38f) else modifier
+            }
 
             else -> modifier // unknown modifier: ignore, never crash rendering
         }

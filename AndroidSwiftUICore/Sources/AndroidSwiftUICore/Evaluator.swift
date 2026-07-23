@@ -74,6 +74,26 @@ public protocol _ModifierProvider {
     var _modifiedContent: any View { get }
 }
 
+/// A modifier provider that needs the resolve context to emit its node — e.g.
+/// to register a callback. The evaluator prefers this over the context-free
+/// `_modifierNode` property when a provider conforms to it.
+public protocol _ContextualModifierProvider {
+    func _modifierNode(in context: ResolveContext) -> ModifierNode
+}
+
+/// A modifier whose emitted node embeds a callback registered against the
+/// resolve context (e.g. `onTapGesture`, `onAppear`, `onChange`).
+public protocol _CallbackModifier {
+    func _callbackNode(in context: ResolveContext) -> ModifierNode
+}
+
+extension _ModifierProvider {
+    /// The emitted node, using the resolve context when the provider needs it.
+    func resolvedModifierNode(in context: ResolveContext) -> ModifierNode {
+        (self as? _ContextualModifierProvider)?._modifierNode(in: context) ?? _modifierNode
+    }
+}
+
 /// A group that flattens into a sequence of sibling nodes (TupleView, ForEach,
 /// conditionals, optionals).
 public protocol _GroupView {
@@ -123,7 +143,7 @@ public enum Evaluator {
         case let modifier as _ModifierProvider:
             // identity-transparent: resolve content at the SAME path, then prepend
             var node = resolve(modifier._modifiedContent, context)
-            node.modifiers.insert(modifier._modifierNode, at: 0)
+            node.modifiers.insert(modifier.resolvedModifierNode(in: context), at: 0)
             return node
         case let effect as _ResolutionEffectView:
             var context = context
@@ -171,8 +191,9 @@ public enum Evaluator {
             var before = nodes.count
             flatten(modifier._modifiedContent, into: &nodes, context: context)
             // apply the modifier to each node the content produced
+            let modifierNode = modifier.resolvedModifierNode(in: context)
             while before < nodes.count {
-                nodes[before].modifiers.insert(modifier._modifierNode, at: 0)
+                nodes[before].modifiers.insert(modifierNode, at: 0)
                 before += 1
             }
         case let anyView as AnyView:

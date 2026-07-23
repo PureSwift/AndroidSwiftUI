@@ -31,6 +31,15 @@ extension ModifiedContent: _ModifierProvider {
     public var _modifiedContent: any View { content }
 }
 
+extension ModifiedContent: _ContextualModifierProvider {
+    public func _modifierNode(in context: ResolveContext) -> ModifierNode {
+        if let callback = modifier as? _CallbackModifier {
+            return callback._callbackNode(in: context)
+        }
+        return modifier._modifierNode
+    }
+}
+
 public extension View {
     func modifier<M: RenderModifier>(_ modifier: M) -> ModifiedContent<Self, M> {
         ModifiedContent(content: self, modifier: modifier)
