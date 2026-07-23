@@ -3,8 +3,10 @@ package com.pureswift.swiftui
 import android.content.Context
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 
 // The Android host: one Compose island rendering the whole Swift-evaluated
@@ -19,7 +21,7 @@ class SwiftUIHostView(context: Context) : FrameLayout(context) {
         val composeView = ComposeView(context)
         composeView.setContent {
             MaterialTheme {
-                Surface {
+                Surface(modifier = Modifier.safeDrawingPadding()) {
                     store.root?.let { Render(it) }
                 }
             }
