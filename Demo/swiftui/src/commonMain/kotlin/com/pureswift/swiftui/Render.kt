@@ -44,7 +44,11 @@ import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
@@ -150,6 +154,7 @@ internal val LocalInheritedFontSize = compositionLocalOf { TextUnit.Unspecified 
 internal val LocalInheritedFontWeight = compositionLocalOf<FontWeight?> { null }
 internal val LocalInheritedColor = compositionLocalOf { Color.Unspecified }
 internal val LocalInheritedDisabled = compositionLocalOf { false }
+internal val LocalTint = compositionLocalOf<Color?> { null }
 
 /// Interprets a Swift-evaluated node tree into Material 3 composables.
 ///
@@ -180,6 +185,7 @@ internal fun RenderChild(node: ViewNode) {
     var fontWeight = LocalInheritedFontWeight.current
     var color = LocalInheritedColor.current
     var disabled = LocalInheritedDisabled.current
+    var tint = LocalTint.current
     for (m in node.modifiers) {
         when (m.kind) {
             "font" -> {
@@ -193,6 +199,7 @@ internal fun RenderChild(node: ViewNode) {
             "fontWeight" -> m.args.string("weight")?.let { fontWeight = fontWeightFor(it) }
             "foregroundColor" -> m.args.long("color")?.let { color = Color(it.toInt()) }
             "disabled" -> if ((m.args["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true") disabled = true
+            "tint" -> m.args.long("color")?.let { tint = Color(it.toInt()) }
         }
     }
 
@@ -202,6 +209,7 @@ internal fun RenderChild(node: ViewNode) {
         LocalInheritedFontWeight provides fontWeight,
         LocalInheritedColor provides color,
         LocalInheritedDisabled provides disabled,
+        LocalTint provides tint,
     ) { RenderResolved(node) }
 }
 
@@ -214,10 +222,12 @@ private fun RenderResolved(node: ViewNode) {
 
             "Button" -> {
                 val onTap = node.long("onTap")
+                val tint = LocalTint.current
                 Button(
                     // own disabled and any inherited `.disabled` both apply
                     onClick = { onTap?.let { SwiftBridge.sink.invokeVoid(it) } },
                     enabled = !node.isDisabled() && !LocalInheritedDisabled.current,
+                    colors = if (tint != null) ButtonDefaults.buttonColors(containerColor = tint) else ButtonDefaults.buttonColors(),
                     modifier = node.composeModifiers(),
                 ) {
                     RenderChildren(node)
@@ -226,11 +236,13 @@ private fun RenderResolved(node: ViewNode) {
 
             "Toggle" -> {
                 val onChange = node.long("onChange")
+                val tint = LocalTint.current
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = node.composeModifiers()) {
                     RenderChildren(node)
                     Switch(
                         checked = node.bool("isOn") ?: false,
                         onCheckedChange = { onChange?.let { id -> SwiftBridge.sink.invokeBool(id, it) } },
+                        colors = if (tint != null) SwitchDefaults.colors(checkedTrackColor = tint) else SwitchDefaults.colors(),
                     )
                 }
             }
@@ -313,10 +325,18 @@ private fun RenderResolved(node: ViewNode) {
 
             "ProgressView" -> {
                 val value = node.double("value")
+                val tint = LocalTint.current
                 if (value != null) {
-                    LinearProgressIndicator(progress = { value.toFloat() }, modifier = node.composeModifiers().fillMaxWidth())
+                    LinearProgressIndicator(
+                        progress = { value.toFloat() },
+                        color = tint ?: ProgressIndicatorDefaults.linearColor,
+                        modifier = node.composeModifiers().fillMaxWidth(),
+                    )
                 } else {
-                    CircularProgressIndicator(modifier = node.composeModifiers())
+                    CircularProgressIndicator(
+                        color = tint ?: ProgressIndicatorDefaults.circularColor,
+                        modifier = node.composeModifiers(),
+                    )
                 }
             }
 
@@ -324,10 +344,12 @@ private fun RenderResolved(node: ViewNode) {
                 val onChange = node.long("onChange")
                 val min = (node.double("min") ?: 0.0).toFloat()
                 val max = (node.double("max") ?: 1.0).toFloat()
+                val tint = LocalTint.current
                 Slider(
                     value = (node.double("value") ?: 0.0).toFloat(),
                     onValueChange = { onChange?.let { id -> SwiftBridge.sink.invokeDouble(id, it.toDouble()) } },
                     valueRange = min..max,
+                    colors = if (tint != null) SliderDefaults.colors(thumbColor = tint, activeTrackColor = tint) else SliderDefaults.colors(),
                     modifier = node.composeModifiers().fillMaxWidth(),
                 )
             }
