@@ -529,15 +529,13 @@ private fun RenderDatePicker(node: ViewNode) {
     }
 }
 
-private val monthAbbreviations = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-
+// Formats the selection in the device locale's medium date style (e.g.
+// "Jul 23, 2026", "23 juil. 2026", "2026/07/23"). UTC matches the epoch-millis
+// the DatePicker and Foundation's Date both use.
 private fun formatDateMillis(millis: Long): String {
-    val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
-    calendar.timeInMillis = millis
-    val month = monthAbbreviations[calendar.get(java.util.Calendar.MONTH)]
-    val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
-    val year = calendar.get(java.util.Calendar.YEAR)
-    return "$month $day, $year"
+    val format = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM)
+    format.timeZone = java.util.TimeZone.getTimeZone("UTC")
+    return format.format(java.util.Date(millis))
 }
 
 // A trigger button opening a dropdown; each child Button becomes a menu item
