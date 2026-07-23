@@ -83,19 +83,63 @@ public extension View {
 // MARK: - Frame
 
 public struct _FrameModifier: RenderModifier {
-    let width: Double?
-    let height: Double?
+    var width: Double? = nil
+    var height: Double? = nil
+    var minWidth: Double? = nil
+    var idealWidth: Double? = nil
+    var maxWidth: Double? = nil
+    var minHeight: Double? = nil
+    var idealHeight: Double? = nil
+    var maxHeight: Double? = nil
+    var alignment: Alignment = .center
+
     public var _modifierNode: ModifierNode {
         var args: [String: PropValue] = [:]
         if let width { args["width"] = .double(width) }
         if let height { args["height"] = .double(height) }
+        if let minWidth { args["minWidth"] = .double(minWidth) }
+        if let idealWidth { args["idealWidth"] = .double(idealWidth) }
+        // .infinity can't cross as a JSON number, so a fill flag carries it.
+        if let maxWidth {
+            if maxWidth == .infinity { args["fillWidth"] = .bool(true) }
+            else { args["maxWidth"] = .double(maxWidth) }
+        }
+        if let minHeight { args["minHeight"] = .double(minHeight) }
+        if let idealHeight { args["idealHeight"] = .double(idealHeight) }
+        if let maxHeight {
+            if maxHeight == .infinity { args["fillHeight"] = .bool(true) }
+            else { args["maxHeight"] = .double(maxHeight) }
+        }
+        if alignment.horizontal != .center || alignment.vertical != .center {
+            args["horizontal"] = .string(alignment.horizontal.rawValue)
+            args["vertical"] = .string(alignment.vertical.rawValue)
+        }
         return ModifierNode(kind: "frame", args: args)
     }
 }
 
 public extension View {
-    func frame(width: Double? = nil, height: Double? = nil) -> ModifiedContent<Self, _FrameModifier> {
-        modifier(_FrameModifier(width: width, height: height))
+    /// A fixed frame, optionally aligning the content within it.
+    func frame(width: Double? = nil, height: Double? = nil, alignment: Alignment = .center) -> ModifiedContent<Self, _FrameModifier> {
+        modifier(_FrameModifier(width: width, height: height, alignment: alignment))
+    }
+
+    /// A flexible frame with size bounds. `maxWidth`/`maxHeight` of `.infinity`
+    /// expand to fill the available space.
+    func frame(
+        minWidth: Double? = nil,
+        idealWidth: Double? = nil,
+        maxWidth: Double? = nil,
+        minHeight: Double? = nil,
+        idealHeight: Double? = nil,
+        maxHeight: Double? = nil,
+        alignment: Alignment = .center
+    ) -> ModifiedContent<Self, _FrameModifier> {
+        modifier(_FrameModifier(
+            minWidth: minWidth, idealWidth: idealWidth, maxWidth: maxWidth,
+            minHeight: minHeight, idealHeight: idealHeight, maxHeight: maxHeight,
+            alignment: alignment
+        ))
     }
 }
 
