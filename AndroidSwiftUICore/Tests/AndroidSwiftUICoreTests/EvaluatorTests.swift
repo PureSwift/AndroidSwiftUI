@@ -238,6 +238,29 @@ struct GraphicsTests {
         #expect(node.props["systemName"] == .string("star.fill"))
     }
 
+    @Test("Map emits its region and marker children")
+    func map() {
+        struct Screen: View {
+            @State var region = MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: -12.046, longitude: -77.043),
+                span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
+            )
+            var body: some View {
+                Map(coordinateRegion: $region, markers: [
+                    MapMarker("Plaza", coordinate: CLLocationCoordinate2D(latitude: -12.045, longitude: -77.030)),
+                ])
+            }
+        }
+        let node = ViewHost(Screen()).evaluate()
+        #expect(node.type == "Map")
+        #expect(node.props["centerLatitude"] == .double(-12.046))
+        #expect(node.props["spanLongitude"] == .double(0.1))
+        #expect(node.children.count == 1)
+        #expect(node.children[0].type == "MapMarker")
+        #expect(node.children[0].props["title"] == .string("Plaza"))
+        #expect(node.children[0].props["latitude"] == .double(-12.045))
+    }
+
     @Test("Overlay emits base and overlay children with alignment")
     func overlay() {
         let node = ViewHost(Color.blue.overlay(alignment: .bottomTrailing) { Text("badge") }).evaluate()
