@@ -26,10 +26,17 @@ public final class ViewHost: @unchecked Sendable {
     /// result across the bridge; tests read `evaluate()` directly instead.
     public var onStateChange: (() -> Void)?
 
+    /// The animation captured from the transaction at write time, carried to
+    /// the (coalesced) evaluation the write scheduled.
+    private var pendingAnimation: Animation?
+
     public init(_ root: any View, reflector: StateReflector = MirrorStateReflector()) {
         self.root = root
         self.storage = StateStorage(reflector: reflector)
         self.storage.onChange = { [weak self] in
+            if let animation = Transaction._current {
+                self?.pendingAnimation = animation
+            }
             self?.onStateChange?()
         }
     }
@@ -43,13 +50,24 @@ public final class ViewHost: @unchecked Sendable {
         // Track @Observable reads during evaluation: a later mutation of any
         // observed property schedules a re-evaluation, exactly like a @State
         // write. Re-arms itself because the change handler triggers evaluate().
-        return withObservationTracking {
+        var node = withObservationTracking {
             Evaluator.resolve(root, context)
         } onChange: { [weak self] in
+            if let animation = Transaction._current {
+                self?.pendingAnimation = animation
+            }
             self?.onStateChange?()
         }
         #else
-        return Evaluator.resolve(root, context)
+        var node = Evaluator.resolve(root, context)
         #endif
+        // A tree produced by a withAnimation write carries the animation on its
+        // root; the interpreter eases changed modifier values while it applies.
+        if let animation = pendingAnimation {
+            pendingAnimation = nil
+            node.props["animationCurve"] = .string(animation.curve)
+            node.props["animationDurationMs"] = .double(animation.duration * 1000)
+        }
+        return node
     }
 }
