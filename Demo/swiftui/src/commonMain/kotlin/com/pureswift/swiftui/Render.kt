@@ -1,6 +1,9 @@
 package com.pureswift.swiftui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,15 +16,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 /// Interprets a Swift-evaluated node tree into Material 3 composables.
 ///
@@ -95,6 +118,47 @@ fun Render(node: ViewNode) {
 
             "Divider" -> HorizontalDivider(modifier = node.composeModifiers())
 
+            "ScrollView" -> {
+                val state = rememberScrollState()
+                if (node.string("axis") == "horizontal") {
+                    Row(modifier = node.composeModifiers().horizontalScroll(state)) { RenderChildren(node) }
+                } else {
+                    Column(modifier = node.composeModifiers().verticalScroll(state)) { RenderChildren(node) }
+                }
+            }
+
+            "Color" -> Box(
+                modifier = node.composeModifiers()
+                    .background(Color((node.long("color") ?: 0).toInt()))
+            )
+
+            "Image" -> Text("[${node.string("name") ?: "image"}]", modifier = node.composeModifiers())
+
+            "ProgressView" -> {
+                val value = node.double("value")
+                if (value != null) {
+                    LinearProgressIndicator(progress = { value.toFloat() }, modifier = node.composeModifiers().fillMaxWidth())
+                } else {
+                    CircularProgressIndicator(modifier = node.composeModifiers())
+                }
+            }
+
+            "Slider" -> {
+                val onChange = node.long("onChange")
+                val min = (node.double("min") ?: 0.0).toFloat()
+                val max = (node.double("max") ?: 1.0).toFloat()
+                Slider(
+                    value = (node.double("value") ?: 0.0).toFloat(),
+                    onValueChange = { onChange?.let { id -> SwiftBridge.sink.invokeDouble(id, it.toDouble()) } },
+                    valueRange = min..max,
+                    modifier = node.composeModifiers().fillMaxWidth(),
+                )
+            }
+
+            "TextField" -> RenderTextField(node)
+
+            "Picker" -> RenderPicker(node)
+
             "EmptyView" -> Unit
 
             "Composable" -> ComposableRegistry.Render(node)
@@ -113,6 +177,71 @@ private fun RenderChildren(node: ViewNode) {
     for (child in node.children) {
         Render(child)
     }
+}
+
+// Uncontrolled-with-reconciliation: Compose owns the field's TextFieldValue
+// (cursor/selection); `lastSent` tracks the value we last pushed to Swift, so
+// an echo (Swift's tree carrying our own text back) leaves the cursor alone,
+// while an external change adopts Swift's value with the cursor at the end.
+@Composable
+private fun RenderTextField(node: ViewNode) {
+    val onChange = node.long("onChange")
+    val swiftText = node.string("text") ?: ""
+    var local by remember(node.id) { mutableStateOf(TextFieldValue(swiftText)) }
+    var lastSent by remember(node.id) { mutableStateOf(swiftText) }
+    if (swiftText != lastSent) {
+        local = TextFieldValue(swiftText, selection = androidx.compose.ui.text.TextRange(swiftText.length))
+        lastSent = swiftText
+    }
+    OutlinedTextField(
+        value = local,
+        onValueChange = { v ->
+            local = v
+            if (v.text != lastSent) {
+                lastSent = v.text
+                onChange?.let { SwiftBridge.sink.invokeString(it, v.text) }
+            }
+        },
+        label = { Text(node.string("placeholder") ?: "") },
+        modifier = node.composeModifiers().fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun RenderPicker(node: ViewNode) {
+    val onChange = node.long("onChange")
+    val selection = node.string("selection")
+    var expanded by remember { mutableStateOf(false) }
+    // options come from the tagged children: (tag value, display text)
+    val options = node.children.mapNotNull { child ->
+        val tag = child.modifiers.firstOrNull { it.kind == "tag" }?.args?.let { (it["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content }
+        val text = pickerLabel(child)
+        if (tag != null) tag to text else null
+    }
+    val currentLabel = options.firstOrNull { it.first == selection }?.second ?: (selection ?: "")
+    Row(modifier = node.composeModifiers().fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(node.string("title") ?: "")
+        Spacer(modifier = Modifier.weight(1f))
+        TextButton(onClick = { expanded = true }) { Text(currentLabel) }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            for ((value, label) in options) {
+                DropdownMenuItem(text = { Text(label) }, onClick = {
+                    expanded = false
+                    onChange?.let { SwiftBridge.sink.invokeString(it, value) }
+                })
+            }
+        }
+    }
+}
+
+// A picker row's display text: the first Text descendant.
+private fun pickerLabel(node: ViewNode): String {
+    if (node.type == "Text") return node.string("text") ?: ""
+    for (child in node.children) {
+        val label = pickerLabel(child)
+        if (label.isNotEmpty()) return label
+    }
+    return ""
 }
 
 // `Modifier.weight` only exists inside RowScope/ColumnScope, so stacks render
@@ -191,6 +320,23 @@ internal fun ViewNode.composeModifiers(): Modifier {
                 val argb = entry.args.long("color") ?: 0
                 modifier.background(Color(argb.toInt()))
             }
+
+            "cornerRadius" -> {
+                val radius = entry.args.double("radius") ?: 0.0
+                modifier.clip(RoundedCornerShape(radius.dp))
+            }
+
+            "offset" -> {
+                val x = entry.args.double("x") ?: 0.0
+                val y = entry.args.double("y") ?: 0.0
+                modifier.offset { IntOffset((x.dp.value).toInt(), (y.dp.value).toInt()) }
+            }
+
+            "rotation" -> modifier.rotate((entry.args.double("degrees") ?: 0.0).toFloat())
+
+            "scale" -> modifier.scale((entry.args.double("scale") ?: 1.0).toFloat())
+
+            "opacity" -> modifier.alpha((entry.args.double("opacity") ?: 1.0).toFloat())
 
             else -> modifier // unknown modifier: ignore, never crash rendering
         }
