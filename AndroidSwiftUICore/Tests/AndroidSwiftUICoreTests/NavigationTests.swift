@@ -116,6 +116,41 @@ struct NavigationTests {
         #expect(node.children.contains { $0.type == "Sheet" })
     }
 
+    @Test("Confirmation dialog presents its buttons and a chosen action dismisses it")
+    func confirmationDialog() {
+        struct Screen: View {
+            @State var shown = false
+            @State var picked = ""
+            var body: some View {
+                Button("Show") { shown = true }
+                    .confirmationDialog("Manage", isPresented: $shown, titleVisibility: .visible, buttons: [
+                        AlertButton("Duplicate") { picked = "dup" },
+                        AlertButton("Delete", role: .destructive) { picked = "del" },
+                    ])
+            }
+        }
+        let host = ViewHost(Screen())
+        var node = host.evaluate()
+        #expect(node.props["hasConfirmationDialog"] == nil)
+        host.callbacks.invokeVoid(findOnTap(node)!)
+        node = host.evaluate()
+        #expect(node.props["hasConfirmationDialog"] == .bool(true))
+        let dialog = node.children.first { $0.type == "ConfirmationDialog" }
+        #expect(dialog?.props["showsTitle"] == .bool(true))
+        guard case .array(let buttons)? = dialog?.props["buttons"], buttons.count == 2 else {
+            Issue.record("expected two buttons"); return
+        }
+        // second button (destructive) fires its action and dismisses the dialog
+        guard case .array(let second) = buttons[1], case .string(let role) = second[1],
+              case .int(let id) = second[2] else {
+            Issue.record("malformed button"); return
+        }
+        #expect(role == "destructive")
+        host.callbacks.invokeVoid(Int64(id))
+        node = host.evaluate()
+        #expect(node.props["hasConfirmationDialog"] == nil)   // dismissed
+    }
+
     @Test("TabView emits tabs with their item labels and selection")
     func tabs() {
         struct Screen: View {
