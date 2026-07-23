@@ -6,6 +6,7 @@
 //
 
 import Testing
+import Foundation
 @testable import AndroidSwiftUICore
 
 // MARK: - Emission
@@ -259,6 +260,13 @@ struct GraphicsTests {
         #expect(node.children[0].type == "MapMarker")
         #expect(node.children[0].props["title"] == .string("Plaza"))
         #expect(node.children[0].props["latitude"] == .double(-12.045))
+    }
+
+    @Test("VideoPlayer emits its media URL")
+    func videoPlayer() {
+        let node = ViewHost(VideoPlayer(player: AVPlayer(url: URL(string: "https://example.com/clip.mp4")!))).evaluate()
+        #expect(node.type == "VideoPlayer")
+        #expect(node.props["url"] == .string("https://example.com/clip.mp4"))
     }
 
     @Test("Overlay emits base and overlay children with alignment")

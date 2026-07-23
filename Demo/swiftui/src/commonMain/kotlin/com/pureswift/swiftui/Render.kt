@@ -258,6 +258,8 @@ private fun RenderResolved(node: ViewNode) {
 
             "Map" -> RenderMap(node)
 
+            "VideoPlayer" -> RenderVideoPlayer(node)
+
             "ProgressView" -> {
                 val value = node.double("value")
                 if (value != null) {
