@@ -256,6 +256,8 @@ private fun RenderResolved(node: ViewNode) {
 
             "LinearGradient" -> RenderGradient(node)
 
+            "Map" -> RenderMap(node)
+
             "ProgressView" -> {
                 val value = node.double("value")
                 if (value != null) {
@@ -609,6 +611,55 @@ private fun RenderShape(node: ViewNode) {
         else -> RectangleShape
     }
     Box(modifier = node.composeModifiers().background(fill, shape))
+}
+
+// A schematic map: the visible region maps linearly onto the box, markers sit
+// at their proportional position, and the center coordinate is captioned.
+// Real tiles come from a registered composable (maps SDKs need an API key).
+@Composable
+private fun RenderMap(node: ViewNode) {
+    val centerLat = node.double("centerLatitude") ?: 0.0
+    val centerLon = node.double("centerLongitude") ?: 0.0
+    val spanLat = (node.double("spanLatitude") ?: 1.0).coerceAtLeast(1e-6)
+    val spanLon = (node.double("spanLongitude") ?: 1.0).coerceAtLeast(1e-6)
+    Box(
+        modifier = node.composeModifiers()
+            .fillMaxWidth()
+            .height(220.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFDCE8DC.toInt()))
+            .border(1.dp, Color(0xFFB8CCB8.toInt()), RoundedCornerShape(8.dp)),
+    ) {
+        for (marker in node.children) {
+            if (marker.type != "MapMarker") continue
+            val lat = marker.double("latitude") ?: continue
+            val lon = marker.double("longitude") ?: continue
+            // normalized region position → alignment bias (north at the top)
+            val fx = ((lon - (centerLon - spanLon / 2)) / spanLon).coerceIn(0.0, 1.0)
+            val fy = (((centerLat + spanLat / 2) - lat) / spanLat).coerceIn(0.0, 1.0)
+            val tint = marker.long("tint")?.let { Color(it.toInt()) } ?: Color(0xFFD32F2F.toInt())
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.align(
+                    androidx.compose.ui.BiasAlignment((2 * fx - 1).toFloat(), (2 * fy - 1).toFloat())
+                ),
+            ) {
+                Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(tint))
+                Text(marker.string("title") ?: "", fontSize = 11.sp)
+            }
+        }
+        Text(
+            "${formatCoordinate(centerLat)}, ${formatCoordinate(centerLon)}",
+            fontSize = 11.sp,
+            color = Color(0xFF667066.toInt()),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(4.dp),
+        )
+    }
+}
+
+private fun formatCoordinate(value: Double): String {
+    val thousandths = kotlin.math.round(value * 1000) / 1000
+    return thousandths.toString()
 }
 
 // Horizontal/vertical when the endpoints share an axis, else a diagonal linear
