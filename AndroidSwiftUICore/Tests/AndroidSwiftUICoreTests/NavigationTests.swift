@@ -183,6 +183,49 @@ struct NavigationTests {
         #expect(entry2[0] == .string("abc"))       // binding round-tripped
     }
 
+    @Test("toolbar rides as placed hidden children whose buttons stay live")
+    func toolbar() {
+        struct Screen: View {
+            @State var saved = 0
+            var body: some View {
+                Text("Body")
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Save") { saved += 1 }
+                        }
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Text("Leading")
+                        }
+                        // a bare view is placed automatically
+                        Text("Bare")
+                    }
+            }
+        }
+        let host = ViewHost(Screen())
+        var node = host.evaluate()
+        #expect(node.props["hasToolbar"] == .bool(true))
+        let items = node.children.filter { $0.type == "ToolbarItem" }
+        #expect(items.count == 3)
+        let placements = items.compactMap { item -> String? in
+            guard case .string(let p)? = item.props["placement"] else { return nil }
+            return p
+        }
+        #expect(placements == ["navigationBarTrailing", "navigationBarLeading", "automatic"])
+
+        // the trailing item's button still dispatches into the screen's state
+        guard let tap = findOnTap(items[0]) else {
+            Issue.record("toolbar button lost its callback"); return
+        }
+        host.callbacks.invokeVoid(tap)
+        node = host.evaluate()
+        let label = node.children
+            .filter { $0.type == "ToolbarItem" }
+            .compactMap { firstTextString($0) }
+            .first
+        #expect(label == "Save")   // still rendered after the state change
+        #expect(host.callbacks.callback(for: tap) != nil)
+    }
+
     @Test("TabView emits tabs with their item labels and selection")
     func tabs() {
         struct Screen: View {
