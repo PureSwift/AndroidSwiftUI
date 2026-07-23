@@ -23,17 +23,22 @@ fun registerDemoComposables() {
     ComposableRegistry.register("RatingBar") { props, _ ->
         val rating = props.float("rating") ?: 0f
         val max = props.int("max") ?: 5
+        val onChanged = props.doubleAction("onRatingChanged")
         AndroidView(
             factory = { context ->
                 RatingBar(context).apply {
                     numStars = max
                     stepSize = 0.5f
-                    setIsIndicator(true)
+                    // dragging the stars sends the new rating back to Swift;
+                    // `fromUser` filters out our own programmatic updates
+                    setOnRatingBarChangeListener { _, value, fromUser ->
+                        if (fromUser) onChanged?.invoke(value.toDouble())
+                    }
                 }
             },
             update = { bar ->
                 bar.numStars = max
-                bar.rating = rating
+                if (bar.rating != rating) bar.rating = rating
             },
         )
     }
