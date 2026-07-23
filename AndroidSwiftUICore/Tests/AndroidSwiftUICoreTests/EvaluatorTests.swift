@@ -110,6 +110,32 @@ struct ModifierTests {
         #expect(frame?.args["height"] == .double(50))
     }
 
+    @Test("A fixed frame with default center alignment emits no alignment")
+    func frameDefaultAlignment() {
+        let node = ViewHost(Text("x").frame(width: 100, height: 50)).evaluate()
+        let frame = node.modifiers.first { $0.kind == "frame" }
+        #expect(frame?.args["horizontal"] == nil)
+        #expect(frame?.args["vertical"] == nil)
+    }
+
+    @Test("maxWidth .infinity becomes a fill flag, not a number")
+    func frameFill() {
+        let node = ViewHost(Text("x").frame(maxWidth: .infinity, alignment: .leading)).evaluate()
+        let frame = node.modifiers.first { $0.kind == "frame" }
+        #expect(frame?.args["fillWidth"] == .bool(true))
+        #expect(frame?.args["maxWidth"] == nil)
+        #expect(frame?.args["horizontal"] == .string("leading"))
+    }
+
+    @Test("Bounded frame emits its min and max")
+    func frameBounds() {
+        let node = ViewHost(Text("x").frame(minWidth: 40, maxWidth: 200, minHeight: 20)).evaluate()
+        let frame = node.modifiers.first { $0.kind == "frame" }
+        #expect(frame?.args["minWidth"] == .double(40))
+        #expect(frame?.args["maxWidth"] == .double(200))
+        #expect(frame?.args["minHeight"] == .double(20))
+    }
+
     @Test("Named font emits its style")
     func fontStyle() {
         let node = ViewHost(Text("x").font(.headline)).evaluate()
