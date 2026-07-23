@@ -44,7 +44,24 @@ struct AppearancePlayground: View {
                             Text("Centered overlay").foregroundColor(.white).bold()
                         }
                 }
+                Example("Unknown modifier → red outline") {
+                    Text("Carries a modifier the interpreter doesn't recognize")
+                        .padding()
+                        .unrecognizedModifier()
+                }
             }
         }
+    }
+}
+
+/// A stand-in for a modifier the interpreter has no fold for — emits a kind
+/// outside the known set, so the renderer flags it with a red outline.
+struct _UnrecognizedModifier: RenderModifier {
+    var _modifierNode: ModifierNode { ModifierNode(kind: "notImplementedInInterpreter") }
+}
+
+extension View {
+    func unrecognizedModifier() -> ModifiedContent<Self, _UnrecognizedModifier> {
+        modifier(_UnrecognizedModifier())
     }
 }
