@@ -17,6 +17,8 @@ public struct ResolveContext {
     public var environment: EnvironmentStorage
     /// Collects the `navigationTitle` of the screen currently being resolved.
     public var titleSink: TitleSink?
+    /// Carries a `refreshable` action to the List it wraps.
+    public var refreshSink: RefreshSink?
     public var path: String
     public var depth: Int
 
@@ -25,6 +27,7 @@ public struct ResolveContext {
         callbacks: CallbackRegistry,
         environment: EnvironmentStorage = EnvironmentStorage(),
         titleSink: TitleSink? = nil,
+        refreshSink: RefreshSink? = nil,
         path: String = "",
         depth: Int = 0
     ) {
@@ -32,6 +35,7 @@ public struct ResolveContext {
         self.callbacks = callbacks
         self.environment = environment
         self.titleSink = titleSink
+        self.refreshSink = refreshSink
         self.path = path
         self.depth = depth
     }
@@ -88,6 +92,12 @@ public protocol _ResolutionEffectView {
 public final class TitleSink {
     public var title: String?
     public var detents: [PresentationDetent] = []
+    public init() {}
+}
+
+/// Carries a pending `refreshable` action to the enclosing List.
+public final class RefreshSink {
+    public var action: (@Sendable () async -> Void)?
     public init() {}
 }
 
