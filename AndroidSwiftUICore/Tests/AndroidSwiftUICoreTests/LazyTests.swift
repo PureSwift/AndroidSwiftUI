@@ -103,3 +103,74 @@ struct LazyTests {
         #expect(node.props["trackCount"] == nil)
     }
 }
+
+@Suite("Lazy stacks")
+struct LazyStackTests {
+
+    @Test("LazyVStack over a ForEach resolves only the elements asked for")
+    func lazyVStackIsLazy() {
+        // a counter proves elements aren't built until requested
+        final class Probe: @unchecked Sendable { var built = 0 }
+        let probe = Probe()
+        struct Row: View {
+            let index: Int
+            let probe: Probe
+            var body: some View {
+                probe.built += 1
+                return Text("Row \(index)")
+            }
+        }
+        let host = ViewHost(
+            LazyVStack {
+                ForEach(0..<10_000, id: \.self) { index in Row(index: index, probe: probe) }
+            }
+        )
+        let node = host.evaluate()
+        #expect(node.type == "LazyVStack")
+        #expect(node.count == 10_000)
+        #expect(probe.built == 0)          // nothing resolved up front
+
+        guard case .int(let provider)? = node.props["itemProvider"] else {
+            Issue.record("missing item provider"); return
+        }
+        let row = host.callbacks.item(Int64(provider), 42)
+        #expect(firstTextString(row!) == "Row 42")
+        #expect(probe.built == 1)          // exactly the one requested
+    }
+
+    @Test("A lazy stack keys its elements by identity, not position")
+    func lazyVStackKeys() {
+        let node = ViewHost(
+            LazyVStack {
+                ForEach(["a", "b", "c"], id: \.self) { Text($0) }
+            }
+        ).evaluate()
+        guard case .array(let keys)? = node.props["keys"] else {
+            Issue.record("missing keys"); return
+        }
+        #expect(keys == [.string("a"), .string("b"), .string("c")])
+    }
+
+    @Test("Content that isn't a single ForEach still renders, eagerly")
+    func lazyVStackFallback() {
+        let node = ViewHost(
+            LazyVStack {
+                Text("header")
+                Text("footer")
+            }
+        ).evaluate()
+        #expect(node.type == "LazyVStack")
+        #expect(node.props["itemProvider"] == nil)   // no lazy path
+        #expect(node.children.count == 2)            // but the content is intact
+    }
+
+    @Test("LazyHStack carries the same provider shape")
+    func lazyHStack() {
+        let node = ViewHost(
+            LazyHStack { ForEach(0..<50, id: \.self) { Text("\($0)") } }
+        ).evaluate()
+        #expect(node.type == "LazyHStack")
+        #expect(node.count == 50)
+        #expect(node.props["itemProvider"] != nil)
+    }
+}
