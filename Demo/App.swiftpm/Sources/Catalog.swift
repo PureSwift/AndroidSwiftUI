@@ -25,6 +25,7 @@ struct CatalogEntry: Identifiable {
 
     static let all: [CatalogEntry] = [
         CatalogEntry(id: "text", title: "Text", screen: AnyCatalogScreen(TextPlayground())),
+        CatalogEntry(id: "style", title: "Styling", screen: AnyCatalogScreen(StylePlayground())),
         CatalogEntry(id: "button", title: "Button", screen: AnyCatalogScreen(ButtonPlayground())),
         CatalogEntry(id: "toggle", title: "Toggle", screen: AnyCatalogScreen(TogglePlayground())),
         CatalogEntry(id: "slider", title: "Slider", screen: AnyCatalogScreen(SliderPlayground())),
