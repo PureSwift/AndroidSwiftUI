@@ -41,4 +41,9 @@ extension SwiftCallbackSink {
     func invokeString(_ id: Int64, _ value: String) {
         BridgeRuntime.current?.invokeString(id, value)
     }
+
+    @JavaMethod
+    func itemNode(_ id: Int64, _ index: Int32) -> ViewNodeObject? {
+        BridgeRuntime.current?.itemNode(id, Int(index))
+    }
 }

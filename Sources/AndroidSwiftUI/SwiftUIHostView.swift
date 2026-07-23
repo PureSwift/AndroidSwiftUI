@@ -6,6 +6,7 @@
 //
 
 import AndroidKit
+import JavaLang
 import AndroidSwiftUIBridge
 import AndroidSwiftUICore
 
@@ -36,7 +37,13 @@ public enum AndroidSwiftUIApp {
             assertionFailure("host view has no tree store")
             return
         }
-        let runtime = BridgeRuntime(root: root, store: store)
+        // marshal re-renders onto the main looper: JNI object creation and
+        // Compose state writes must run there, not on a Swift Task's thread
+        let handler = AndroidOS.Handler(try! JavaClass<AndroidOS.Looper>().getMainLooper())
+        let runtime = BridgeRuntime(root: root, store: store) { block in
+            let runnable = Runnable { block() }
+            _ = handler.post(runnable.as(JavaLang.Runnable.self))
+        }
         Self.runtime = runtime
         runtime.start()
         activity.setRootView(host)

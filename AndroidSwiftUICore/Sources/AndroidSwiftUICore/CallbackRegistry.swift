@@ -16,6 +16,9 @@ public final class CallbackRegistry {
         case double((Double) -> Void)
         case int((Int) -> Void)
         case string((String) -> Void)
+        /// A lazy row provider: given an index, returns that row's subtree.
+        /// Must be a pure read — it runs during Compose composition.
+        case item((Int) -> RenderNode)
     }
 
     private var current: [Int64: Callback] = [:]
@@ -67,5 +70,11 @@ public final class CallbackRegistry {
 
     public func invokeString(_ id: Int64, _ value: String) {
         if case .string(let action)? = callback(for: id) { action(value) }
+    }
+
+    /// Resolves a lazy row on demand.
+    public func item(_ id: Int64, _ index: Int) -> RenderNode? {
+        if case .item(let provider)? = callback(for: id) { return provider(index) }
+        return nil
     }
 }

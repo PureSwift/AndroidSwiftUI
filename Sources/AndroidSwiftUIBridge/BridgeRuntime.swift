@@ -16,17 +16,23 @@ public final class BridgeRuntime {
 
     let host: ViewHost
     let store: TreeStore
+    /// Runs a block on the platform main thread. JNI object creation and Compose
+    /// state writes must happen there — a native background thread (e.g. a Swift
+    /// `Task` driving an async state write) has neither the app class loader nor
+    /// the right to touch Compose state.
+    let scheduler: (@escaping () -> Void) -> Void
+    private var needsRender = false
 
-    public init(root: any View, store: TreeStore) {
+    public init(
+        root: any View,
+        store: TreeStore,
+        scheduler: @escaping (@escaping () -> Void) -> Void = { $0() }
+    ) {
         self.host = ViewHost(root)
         self.store = store
-        // UI events arrive on the platform main thread (Compose dispatch), and
-        // state writes inside them re-evaluate synchronously here. Event
-        // callbacks run outside composition, so assigning the store's Compose
-        // state from them is the standard, safe path. Cross-thread writes get
-        // a scheduler when async state arrives (R5).
+        self.scheduler = scheduler
         self.host.onStateChange = { [weak self] in
-            self?.push()
+            self?.setNeedsRender()
         }
     }
 
@@ -35,6 +41,18 @@ public final class BridgeRuntime {
     public func start() {
         BridgeRuntime.current = self
         push()
+    }
+
+    /// Coalesces state changes into one scheduled render on the main thread.
+    /// Never evaluates synchronously inside a callback (avoids reentrancy).
+    private func setNeedsRender() {
+        guard !needsRender else { return }
+        needsRender = true
+        scheduler { [weak self] in
+            guard let self else { return }
+            self.needsRender = false
+            self.push()
+        }
     }
 
     func push() {
@@ -49,4 +67,11 @@ public final class BridgeRuntime {
     public func invokeDouble(_ id: Int64, _ value: Double) { host.callbacks.invokeDouble(id, value) }
     public func invokeInt(_ id: Int64, _ value: Int) { host.callbacks.invokeInt(id, value) }
     public func invokeString(_ id: Int64, _ value: String) { host.callbacks.invokeString(id, value) }
+
+    /// Resolves a lazy row and materializes it for the interpreter. Runs during
+    /// Compose composition — a pure read.
+    public func itemNode(_ id: Int64, _ index: Int) -> ViewNodeObject? {
+        guard let node = host.callbacks.item(id, index) else { return nil }
+        return Materializer.materialize(node)
+    }
 }
