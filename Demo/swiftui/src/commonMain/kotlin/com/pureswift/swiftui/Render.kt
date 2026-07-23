@@ -3,6 +3,11 @@ package com.pureswift.swiftui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
@@ -1062,6 +1067,7 @@ private fun fontWeightFor(name: String): FontWeight = when (name) {
 /// animation (explicit `withAnimation` tree, or this node's `.animation`
 /// modifier) applies, and `snap` otherwise.
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 internal fun ViewNode.composeModifiers(): Modifier {
     val implicit = modifiers.firstOrNull { it.kind == "animation" && it.args["curve"] != null }
         ?.let { AnimSpec(it.args.string("curve") ?: "easeInOut", (it.args.double("durationMs") ?: 350.0).toInt()) }
@@ -1124,9 +1130,66 @@ internal fun ViewNode.composeModifiers(): Modifier {
                 modifier.clip(shape)
             }
 
+            // Tap and long press share one detector: two competing pointer
+            // handlers on the same view would fight over the gesture.
             "onTapGesture" -> {
                 val id = entry.args.long("action")
-                if (id != null) modifier.clickable { SwiftBridge.sink.invokeVoid(id) } else modifier
+                val longID = modifiers.firstOrNull { it.kind == "longPress" }?.args?.long("action")
+                when {
+                    id == null -> modifier
+                    longID == null -> modifier.clickable { SwiftBridge.sink.invokeVoid(id) }
+                    else -> modifier.combinedClickable(
+                        onClick = { SwiftBridge.sink.invokeVoid(id) },
+                        onLongClick = { SwiftBridge.sink.invokeVoid(longID) },
+                    )
+                }
+            }
+
+            "longPress" -> {
+                val id = entry.args.long("action")
+                // already wired above when this view also has a tap handler
+                val hasTap = modifiers.any { it.kind == "onTapGesture" }
+                if (id == null || hasTap) modifier
+                else modifier.combinedClickable(onClick = {}, onLongClick = { SwiftBridge.sink.invokeVoid(id) })
+            }
+
+            // Continuous drag: positions are reported in points, converted from
+            // the pointer's pixels, as "<phase>;<startX>,<startY>;<x>,<y>".
+            "drag" -> {
+                val id = entry.args.long("action")
+                if (id == null) modifier else {
+                // The detector is a long-running coroutine, so it must be keyed
+                // by the node's STABLE id: keying by the callback id would tear
+                // the gesture down mid-drag, since every onChanged re-evaluates
+                // the tree and mints a fresh id. The lambda then reads the id
+                // from a holder so it never dispatches to a reclaimed callback.
+                val latest = remember(this@composeModifiers.id) { longArrayOf(id) }
+                latest[0] = id
+                modifier.pointerInput(this@composeModifiers.id) {
+                    var start = Offset.Zero
+                    // Accumulate per-event deltas rather than reading absolute
+                    // positions: a view that offsets itself by the translation
+                    // moves under the finger, and absolute readings would
+                    // compensate for that motion and collapse toward zero.
+                    var total = Offset.Zero
+                    fun payload(phase: String): String {
+                        val end = start + total
+                        return "$phase;${start.x.toDp().value},${start.y.toDp().value};" +
+                            "${end.x.toDp().value},${end.y.toDp().value}"
+                    }
+                    detectDragGestures(
+                        onDragStart = { start = it; total = Offset.Zero },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            total += dragAmount
+                            SwiftBridge.sink.invokeString(latest[0], payload("changed"))
+                        },
+                        // ends carrying the final translation, as SwiftUI does
+                        onDragEnd = { SwiftBridge.sink.invokeString(latest[0], payload("ended")) },
+                        onDragCancel = { SwiftBridge.sink.invokeString(latest[0], payload("ended")) },
+                    )
+                }
+                }
             }
 
             // Dim disabled content; controls also drop interactivity via their
@@ -1155,7 +1218,7 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "scale", "opacity", "border", "shadow", "clipShape", "onTapGesture", "disabled",
     "font", "fontWeight", "italic", "foregroundColor", "lineLimit", "multilineTextAlignment",
     "tint", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
-    "transition", "focused",
+    "transition", "focused", "longPress", "drag",
 )
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded
