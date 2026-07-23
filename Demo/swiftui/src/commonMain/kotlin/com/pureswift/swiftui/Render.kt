@@ -21,6 +21,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Column as LayoutColumn
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -186,6 +192,12 @@ fun Render(node: ViewNode) {
             ) { RenderChildren(node) }
 
             "TabView" -> RenderTabView(node)
+
+            "List" -> RenderList(node)
+
+            "LazyVGrid" -> RenderGrid(node, vertical = true)
+
+            "LazyHGrid" -> RenderGrid(node, vertical = false)
 
             "EmptyView" -> Unit
 
@@ -508,4 +520,64 @@ private fun RenderAlert(node: ViewNode) {
 private fun ViewNode.stringArray(key: String): List<String> {
     val arr = props[key] as? kotlinx.serialization.json.JsonArray ?: return emptyList()
     return arr.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenderList(node: ViewNode) {
+    val provider = node.long("itemProvider") ?: return
+    val count = node.count ?: 0
+    val keys = node.stringArray("keys")
+    val onRefresh = node.long("onRefresh")
+    val list: @Composable () -> Unit = {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(count = count, key = { keys.getOrNull(it) ?: it }) { index ->
+                // one JNI call per newly-visible row; re-fetched when the tree
+                // (hence the provider id) changes
+                val row = remember(provider, index) { SwiftBridge.sink.itemNode(provider, index) }
+                row?.let { Render(it) }
+            }
+        }
+    }
+    if (onRefresh != null) {
+        var refreshing by remember { mutableStateOf(false) }
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = {
+                refreshing = true
+                SwiftBridge.sink.invokeVoid(onRefresh)
+            },
+        ) { list() }
+        // clear the indicator once the tree updates (new content arrived)
+        LaunchedEffect(node.count) { refreshing = false }
+    } else {
+        list()
+    }
+}
+
+@Composable
+private fun RenderGrid(node: ViewNode, vertical: Boolean) {
+    val spacing = (node.double("spacing") ?: 8.0).dp
+    val cells = node.double("adaptiveMin")?.let { GridCells.Adaptive(it.dp) }
+        ?: GridCells.Fixed(node.long("trackCount")?.toInt() ?: 1)
+    if (vertical) {
+        LazyVerticalGrid(
+            columns = cells,
+            verticalArrangement = Arrangement.spacedBy(spacing),
+            horizontalArrangement = Arrangement.spacedBy(spacing),
+            modifier = node.composeModifiers(),
+        ) {
+            items(node.children.size) { Render(node.children[it]) }
+        }
+    } else {
+        LazyHorizontalGrid(
+            rows = cells,
+            verticalArrangement = Arrangement.spacedBy(spacing),
+            horizontalArrangement = Arrangement.spacedBy(spacing),
+            modifier = node.composeModifiers(),
+        ) {
+            items(node.children.size) { Render(node.children[it]) }
+        }
+    }
 }

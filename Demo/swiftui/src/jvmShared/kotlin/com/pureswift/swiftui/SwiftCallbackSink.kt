@@ -16,4 +16,7 @@ class SwiftCallbackSink : CallbackSink {
     external override fun invokeInt(id: Long, value: Int)
 
     external override fun invokeString(id: Long, value: String)
+
+    // A lazy row query: returns the materialized row subtree, or null.
+    external override fun itemNode(id: Long, index: Int): ViewNode?
 }

@@ -33,6 +33,8 @@ interface CallbackSink {
     fun invokeDouble(id: Long, value: Double)
     fun invokeInt(id: Long, value: Int)
     fun invokeString(id: Long, value: String)
+    /// Resolves a lazy row on demand; the logging default has no rows.
+    fun itemNode(id: Long, index: Int): ViewNode? = null
 }
 
 /// Global event sink used by the interpreter. Defaults to a logger.
@@ -46,5 +48,6 @@ object SwiftBridge {
         override fun invokeDouble(id: Long, value: Double) = println("SwiftBridge.invokeDouble($id, $value)")
         override fun invokeInt(id: Long, value: Int) = println("SwiftBridge.invokeInt($id, $value)")
         override fun invokeString(id: Long, value: String) = println("SwiftBridge.invokeString($id, $value)")
+        override fun itemNode(id: Long, index: Int): ViewNode? = null
     }
 }
