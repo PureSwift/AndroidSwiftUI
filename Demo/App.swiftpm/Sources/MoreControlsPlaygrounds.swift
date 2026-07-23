@@ -4,15 +4,21 @@ import AndroidSwiftUI
 import SwiftUI
 #endif
 
+import Foundation
+
 struct MoreControlsPlayground: View {
     @State private var quantity = 1
     @State private var password = ""
     @State private var choice = "None"
+    @State private var birthday = Date(timeIntervalSince1970: 946_684_800) // 2000-01-01T00:00:00Z
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Example("Stepper") {
                     Stepper("Quantity: \(quantity)", value: $quantity, in: 0...10)
+                }
+                Example("DatePicker") {
+                    DatePicker("Birthday", selection: $birthday)
                 }
                 Example("SecureField") {
                     VStack(alignment: .leading, spacing: 8) {
