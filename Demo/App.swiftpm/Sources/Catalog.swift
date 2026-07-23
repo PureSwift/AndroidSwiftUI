@@ -46,5 +46,6 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "state", title: "State", screen: AnyCatalogScreen(StatePlayground())),
         CatalogEntry(id: "environment", title: "Environment", screen: AnyCatalogScreen(EnvironmentPlayground())),
         CatalogEntry(id: "observable", title: "Observable", screen: AnyCatalogScreen(ObservablePlayground())),
+        CatalogEntry(id: "bindable", title: "Bindable", screen: AnyCatalogScreen(BindablePlayground())),
     ]
 }

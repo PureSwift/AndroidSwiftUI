@@ -9,7 +9,7 @@ import Testing
 #if canImport(Observation)
 import Observation
 
-@Observable final class ObservableModel { var counter = 0 }
+@Observable final class ObservableModel { var counter = 0; var name = "" }
 #endif
 
 @Suite("Controls and environment")
@@ -108,6 +108,34 @@ struct ControlTests {
         #expect(fired)
         node = host.evaluate()
         #expect(node.props["text"] == .string("count 1"))
+    }
+
+    @Test("@Bindable projects a two-way binding into an observable model")
+    func bindableProjection() {
+        let model = ObservableModel()
+        @Bindable var bound = model
+        let binding = $bound.name
+        binding.wrappedValue = "hi"
+        #expect(model.name == "hi")
+        #expect(binding.wrappedValue == "hi")
+    }
+
+    @Test("A TextField bound via @Bindable writes back to the model")
+    func bindableTextField() {
+        struct Screen: View {
+            @Bindable var model: ObservableModel
+            var body: some View { TextField("Name", text: $model.name) }
+        }
+        let model = ObservableModel()
+        let host = ViewHost(Screen(model: model))
+        var node = host.evaluate()
+        #expect(node.props["text"] == .string(""))
+        if case .int(let id)? = node.props["onChange"] {
+            host.callbacks.invokeString(Int64(id), "Coleman")
+        }
+        #expect(model.name == "Coleman")
+        node = host.evaluate()
+        #expect(node.props["text"] == .string("Coleman"))
     }
     #endif
 }
