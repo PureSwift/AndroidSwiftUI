@@ -115,6 +115,23 @@ struct ControlTests {
         #expect(node.children.count == 2)
     }
 
+    @Test("Form nests Sections with their header and rows")
+    func formSection() {
+        let node = ViewHost(
+            Form {
+                Section("General") {
+                    Text("Wi-Fi")
+                    Text("Bluetooth")
+                }
+            }
+        ).evaluate()
+        #expect(node.type == "Form")
+        let section = node.children.first
+        #expect(section?.type == "Section")
+        #expect(section?.props["header"] == .string("General"))
+        #expect(section?.children.count == 2)
+    }
+
     @Test("Environment objects reach @Environment properties in the subtree")
     func environmentInjection() {
         final class Model { var value = 42 }
