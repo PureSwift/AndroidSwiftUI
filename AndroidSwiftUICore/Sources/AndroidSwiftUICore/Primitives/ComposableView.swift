@@ -27,15 +27,43 @@
 //  renders a visible diagnostic rather than failing silently.
 //
 
+/// A callback a custom composable can invoke to send an event back to Swift —
+/// the counterpart to a `UIViewRepresentable`'s coordinator. The associated
+/// value's type matches the fixed bridge dispatch surface.
+public enum ComposableAction {
+    case void(() -> Void)
+    case bool((Bool) -> Void)
+    case double((Double) -> Void)
+    case int((Int) -> Void)
+    case string((String) -> Void)
+
+    internal func register(in callbacks: CallbackRegistry) -> Int64 {
+        switch self {
+        case .void(let action): return callbacks.register(.void(action))
+        case .bool(let action): return callbacks.register(.bool(action))
+        case .double(let action): return callbacks.register(.double(action))
+        case .int(let action): return callbacks.register(.int(action))
+        case .string(let action): return callbacks.register(.string(action))
+        }
+    }
+}
+
 public struct ComposableView<Content: View>: View {
 
     internal let name: String
     internal let props: [String: PropValue]
+    internal let actions: [String: ComposableAction]
     internal let content: Content
 
-    public init(_ name: String, props: [String: PropValue] = [:], @ViewBuilder content: () -> Content) {
+    public init(
+        _ name: String,
+        props: [String: PropValue] = [:],
+        actions: [String: ComposableAction] = [:],
+        @ViewBuilder content: () -> Content
+    ) {
         self.name = name
         self.props = props
+        self.actions = actions
         self.content = content()
     }
 
@@ -43,8 +71,8 @@ public struct ComposableView<Content: View>: View {
 }
 
 public extension ComposableView where Content == EmptyView {
-    init(_ name: String, props: [String: PropValue] = [:]) {
-        self.init(name, props: props) { EmptyView() }
+    init(_ name: String, props: [String: PropValue] = [:], actions: [String: ComposableAction] = [:]) {
+        self.init(name, props: props, actions: actions) { EmptyView() }
     }
 }
 
@@ -52,6 +80,11 @@ extension ComposableView: PrimitiveView {
     public func _render(in context: ResolveContext) -> RenderNode {
         var props = self.props
         props["name"] = .string(name)   // reserved: identifies the registered factory
+        // Each action registers a callback; its id crosses as a prop the factory
+        // reads back as a typed lambda.
+        for (key, action) in actions {
+            props[key] = .int(Int(action.register(in: context.callbacks)))
+        }
         return RenderNode(
             type: "Composable",
             id: context.path,
