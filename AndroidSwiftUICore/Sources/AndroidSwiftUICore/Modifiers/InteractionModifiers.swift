@@ -56,15 +56,36 @@ public extension View {
 
 // MARK: - task
 
+/// Running `.task` closures, keyed by the view's stable identity path. Keying by
+/// path (not the generation-scoped callback id) lets the cancel fired on disappear
+/// stop the right Task no matter how many times the view re-evaluated in between.
+enum _TaskRegistry {
+    nonisolated(unsafe) static var running: [String: Task<Void, Never>] = [:]
+
+    static func start(path: String, action: @escaping @Sendable () async -> Void) {
+        running[path]?.cancel()                       // replace a stale run at this path
+        running[path] = Task { await action() }
+    }
+
+    static func cancel(path: String) {
+        running[path]?.cancel()
+        running[path] = nil
+    }
+}
+
 public struct _TaskModifier: RenderModifier, _CallbackModifier {
     let action: @Sendable () async -> Void
     public var _modifierNode: ModifierNode { ModifierNode(kind: "task") }
     public func _callbackNode(in context: ResolveContext) -> ModifierNode {
-        // The interpreter fires this once on appear; the closure runs as a Task.
-        // (v1 does not cancel it on disappear.)
+        // Two callbacks: the interpreter fires `start` on appear and `cancel` on
+        // disappear. The launched Task is stored by identity path, so the closure
+        // it runs is cooperatively cancelled (Task.isCancelled / Task.sleep throws)
+        // when the view leaves the tree.
         let action = self.action
-        let id = context.callbacks.register(.void { Task { await action() } })
-        return ModifierNode(kind: "task", args: ["action": .int(Int(id))])
+        let path = context.path
+        let start = context.callbacks.register(.void { _TaskRegistry.start(path: path, action: action) })
+        let cancel = context.callbacks.register(.void { _TaskRegistry.cancel(path: path) })
+        return ModifierNode(kind: "task", args: ["start": .int(Int(start)), "cancel": .int(Int(cancel))])
     }
 }
 
