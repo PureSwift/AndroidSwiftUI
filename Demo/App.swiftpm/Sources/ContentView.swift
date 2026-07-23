@@ -16,6 +16,8 @@ struct ContentView: View {
                     NavigationLink("Text", destination: TextScreen())
                     NavigationLink("Buttons", destination: ButtonScreen())
                     NavigationLink("Stacks", destination: StacksScreen())
+                    NavigationLink("List", destination: ListScreen())
+                    NavigationLink("Grid", destination: GridScreen())
                     NavigationLink("State", destination: StateScreen())
                     NavigationLink("Controls", destination: ControlsScreen())
                     NavigationLink("Modifiers", destination: ModifierScreen())
