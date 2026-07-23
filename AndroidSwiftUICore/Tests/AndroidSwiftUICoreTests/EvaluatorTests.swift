@@ -181,3 +181,40 @@ struct ModifierTests {
         #expect(flag?.args["value"] == .bool(true))
     }
 }
+
+// MARK: - Graphics
+
+@Suite("Graphics")
+struct GraphicsTests {
+
+    @Test("Shapes emit a Shape node with their kind and fill")
+    func shapes() {
+        let rect = ViewHost(Rectangle().fill(.blue)).evaluate()
+        #expect(rect.type == "Shape")
+        #expect(rect.props["shape"] == .string("rectangle"))
+        #expect(rect.props["fill"] == Color.blue.propValue)
+
+        let rounded = ViewHost(RoundedRectangle(cornerRadius: 12)).evaluate()
+        #expect(rounded.props["shape"] == .string("roundedRectangle"))
+        #expect(rounded.props["cornerRadius"] == .double(12))
+
+        #expect(ViewHost(Circle()).evaluate().props["shape"] == .string("circle"))
+        #expect(ViewHost(Capsule()).evaluate().props["shape"] == .string("capsule"))
+    }
+
+    @Test("LinearGradient emits its colors and endpoints")
+    func gradient() {
+        let node = ViewHost(LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing)).evaluate()
+        #expect(node.type == "LinearGradient")
+        #expect(node.props["colors"] == .array([Color.blue.propValue, Color.purple.propValue]))
+        #expect(node.props["startX"] == .double(0))
+        #expect(node.props["endX"] == .double(1))
+    }
+
+    @Test("Image(systemName:) carries the symbol name")
+    func systemImage() {
+        let node = ViewHost(Image(systemName: "star.fill")).evaluate()
+        #expect(node.type == "Image")
+        #expect(node.props["systemName"] == .string("star.fill"))
+    }
+}
