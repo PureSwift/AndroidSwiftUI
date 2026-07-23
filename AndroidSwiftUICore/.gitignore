@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+*.d
+*.dia
+*.swiftdeps
+*.swiftmodule
+*.swiftsourceinfo
+*.abi.json
