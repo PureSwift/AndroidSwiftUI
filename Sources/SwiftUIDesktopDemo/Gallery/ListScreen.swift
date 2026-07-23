@@ -1,8 +1,4 @@
-#if canImport(AndroidSwiftUI)
-import AndroidSwiftUI
-#else
-import SwiftUI
-#endif
+import AndroidSwiftUICore
 
 /// A lazy list with pull to refresh. Rows are evaluated on demand, so the
 /// large-list variant scrolls without materializing every row up front.

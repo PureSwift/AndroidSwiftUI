@@ -1,8 +1,4 @@
-#if canImport(AndroidSwiftUI)
-import AndroidSwiftUI
-#else
-import SwiftUI
-#endif
+import AndroidSwiftUICore
 
 /// Stack containers and cross-axis alignment.
 struct StacksScreen: View {

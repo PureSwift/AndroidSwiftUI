@@ -1,8 +1,4 @@
-#if canImport(AndroidSwiftUI)
-import AndroidSwiftUI
-#else
-import SwiftUI
-#endif
+import AndroidSwiftUICore
 
 /// Classic and value-based navigation, plus the dismiss environment action.
 struct NavigationScreen: View {

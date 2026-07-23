@@ -1,8 +1,4 @@
-#if canImport(AndroidSwiftUI)
-import AndroidSwiftUI
-#else
-import SwiftUI
-#endif
+import AndroidSwiftUICore
 
 /// Lazy grids.
 struct GridScreen: View {

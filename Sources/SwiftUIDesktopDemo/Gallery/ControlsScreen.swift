@@ -1,8 +1,4 @@
-#if canImport(AndroidSwiftUI)
-import AndroidSwiftUI
-#else
-import SwiftUI
-#endif
+import AndroidSwiftUICore
 
 /// Form controls and their state bindings.
 struct ControlsScreen: View {

@@ -1,8 +1,4 @@
-#if canImport(AndroidSwiftUI)
-import AndroidSwiftUI
-#else
-import SwiftUI
-#endif
+import AndroidSwiftUICore
 
 /// Gallery of playground screens, navigated with a `NavigationStack`. Each row
 /// pushes a feature screen; `List`-based navigation returns with lazy

@@ -1,8 +1,4 @@
-#if canImport(AndroidSwiftUI)
-import AndroidSwiftUI
-#else
-import SwiftUI
-#endif
+import AndroidSwiftUICore
 
 /// Lazy state initialization: the stored class is constructed once per view
 /// lifetime, no matter how often the parent re-renders.
