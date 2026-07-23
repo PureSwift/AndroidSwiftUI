@@ -187,6 +187,68 @@ struct ModifierTests {
         #expect(tapped)
     }
 
+    @Test("onLongPressGesture registers its own callback distinct from a tap")
+    func longPress() {
+        var tapped = false
+        var pressed = false
+        let host = ViewHost(
+            Text("x")
+                .onTapGesture { tapped = true }
+                .onLongPressGesture { pressed = true }
+        )
+        let node = host.evaluate()
+        guard case .int(let tapID)? = node.modifiers.first(where: { $0.kind == "onTapGesture" })?.args["action"],
+              case .int(let pressID)? = node.modifiers.first(where: { $0.kind == "longPress" })?.args["action"] else {
+            Issue.record("missing gesture callbacks"); return
+        }
+        #expect(tapID != pressID)
+        host.callbacks.invokeVoid(Int64(pressID))
+        #expect(pressed)
+        #expect(!tapped)
+    }
+
+    @Test("A drag reports translation to onChanged, then a final value to onEnded")
+    func dragGesture() {
+        var changes: [CGSize] = []
+        var ended: CGSize?
+        let host = ViewHost(
+            Text("x").gesture(
+                DragGesture()
+                    .onChanged { changes.append($0.translation) }
+                    .onEnded { ended = $0.translation }
+            )
+        )
+        let node = host.evaluate()
+        let drag = node.modifiers.first { $0.kind == "drag" }
+        #expect(drag?.args["minimumDistance"] == .double(10))
+        guard case .int(let id)? = drag?.args["action"] else {
+            Issue.record("missing drag callback"); return
+        }
+        // the interpreter's payload: phase, start point, current point (in points)
+        host.callbacks.invokeString(Int64(id), "changed;10.0,20.0;40.0,25.0")
+        host.callbacks.invokeString(Int64(id), "ended;10.0,20.0;60.0,20.0")
+        #expect(changes.count == 1)
+        #expect(changes.first?.width == 30)    // 40 − 10
+        #expect(changes.first?.height == 5)    // 25 − 20
+        #expect(ended?.width == 50)
+        #expect(ended?.height == 0)
+    }
+
+    @Test("A malformed drag payload is ignored rather than crashing")
+    func dragGestureMalformed() {
+        var changes = 0
+        let host = ViewHost(
+            Text("x").gesture(DragGesture().onChanged { _ in changes += 1 })
+        )
+        let node = host.evaluate()
+        guard case .int(let id)? = node.modifiers.first(where: { $0.kind == "drag" })?.args["action"] else {
+            Issue.record("missing drag callback"); return
+        }
+        host.callbacks.invokeString(Int64(id), "changed;garbage")
+        host.callbacks.invokeString(Int64(id), "")
+        #expect(changes == 0)
+    }
+
     @Test("onAppear and onDisappear emit distinct callback kinds")
     func appearDisappear() {
         let node = ViewHost(Text("x").onAppear {}.onDisappear {}).evaluate()
