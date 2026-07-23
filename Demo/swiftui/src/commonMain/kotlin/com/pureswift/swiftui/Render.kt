@@ -15,20 +15,39 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Column as LayoutColumn
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -159,6 +178,15 @@ fun Render(node: ViewNode) {
 
             "Picker" -> RenderPicker(node)
 
+            "NavStack" -> RenderNavStack(node)
+
+            "NavigationLink" -> TextButton(
+                onClick = { node.long("onTap")?.let { SwiftBridge.sink.invokeVoid(it) } },
+                modifier = node.composeModifiers(),
+            ) { RenderChildren(node) }
+
+            "TabView" -> RenderTabView(node)
+
             "EmptyView" -> Unit
 
             "Composable" -> ComposableRegistry.Render(node)
@@ -172,9 +200,14 @@ fun Render(node: ViewNode) {
     }
 }
 
+// Sheets and alerts ride as hidden children; the presentation layer shows
+// them, so the normal child loop skips them.
+private fun ViewNode.isPresentation(): Boolean = type == "Sheet" || type == "Alert"
+
 @Composable
 private fun RenderChildren(node: ViewNode) {
     for (child in node.children) {
+        if (child.isPresentation()) continue
         Render(child)
     }
 }
@@ -250,6 +283,7 @@ private fun pickerLabel(node: ViewNode): String {
 @Composable
 private fun ColumnScope.RenderColumnChildren(node: ViewNode) {
     for (child in node.children) {
+        if (child.isPresentation()) continue
         if (child.type == "Spacer") {
             Spacer(modifier = Modifier.weight(1f))
         } else {
@@ -261,6 +295,7 @@ private fun ColumnScope.RenderColumnChildren(node: ViewNode) {
 @Composable
 private fun RowScope.RenderRowChildren(node: ViewNode) {
     for (child in node.children) {
+        if (child.isPresentation()) continue
         if (child.type == "Spacer") {
             Spacer(modifier = Modifier.weight(1f))
         } else {
@@ -342,4 +377,135 @@ internal fun ViewNode.composeModifiers(): Modifier {
         }
     }
     return modifier
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenderNavStack(node: ViewNode) {
+    val titles = node.stringArray("titles")
+    val onPop = node.long("onPop")
+    val depth = node.children.size
+    // cache rendered screens by index so a popped screen can animate out
+    val topIndex = depth - 1
+    Scaffold(
+        topBar = {
+            val title = titles.getOrNull(topIndex).orEmpty()
+            if (title.isNotEmpty() || depth > 1) {
+                TopAppBar(
+                    title = { Text(title) },
+                    navigationIcon = {
+                        if (depth > 1) {
+                            IconButton(onClick = { onPop?.let { SwiftBridge.sink.invokeVoid(it) } }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        }
+                    },
+                )
+            }
+        },
+    ) { padding ->
+        AnimatedContent(
+            targetState = topIndex,
+            transitionSpec = {
+                if (targetState > initialState) {
+                    (slideInHorizontally { it }) togetherWith (slideOutHorizontally { -it / 3 })
+                } else {
+                    (slideInHorizontally { -it / 3 }) togetherWith (slideOutHorizontally { it })
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+            label = "nav",
+        ) { index ->
+            LayoutColumn(modifier = Modifier.padding(padding)) {
+                node.children.getOrNull(index)?.let { Render(it) }
+            }
+        }
+    }
+    RenderSheetsAndAlerts(node.children.getOrNull(topIndex))
+}
+
+@Composable
+private fun RenderTabView(node: ViewNode) {
+    val selection = node.long("selection")?.toInt() ?: 0
+    val onSelect = node.long("onSelect")
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                node.children.forEachIndexed { index, tab ->
+                    val label = tab.modifiers.firstOrNull { it.kind == "tabItem" }
+                        ?.args?.let { (it["text"] as? kotlinx.serialization.json.JsonPrimitive)?.content } ?: ""
+                    val tag = tab.modifiers.firstOrNull { it.kind == "tag" }
+                        ?.args?.let { (it["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull() } ?: index
+                    NavigationBarItem(
+                        selected = tag == selection,
+                        onClick = { onSelect?.let { SwiftBridge.sink.invokeInt(it, tag) } },
+                        icon = {},
+                        label = { Text(label) },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        val current = node.children.firstOrNull { tab ->
+            val tag = tab.modifiers.firstOrNull { it.kind == "tag" }
+                ?.args?.let { (it["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull() }
+            tag == selection
+        } ?: node.children.getOrNull(selection)
+        LayoutColumn(modifier = Modifier.padding(padding)) {
+            current?.let { Render(it) }
+        }
+    }
+}
+
+// Sheets and alerts ride as hidden children of a screen node; present them
+// when the screen carries the corresponding flag.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenderSheetsAndAlerts(screen: ViewNode?) {
+    if (screen == null) return
+    for (child in screen.children) {
+        when (child.type) {
+            "Sheet" -> {
+                val onDismiss = child.long("onDismiss")
+                ModalBottomSheet(onDismissRequest = { onDismiss?.let { SwiftBridge.sink.invokeVoid(it) } }) {
+                    child.children.firstOrNull()?.let { Render(it) }
+                }
+            }
+            "Alert" -> RenderAlert(child)
+        }
+    }
+}
+
+@Composable
+private fun RenderAlert(node: ViewNode) {
+    val onDismiss = node.long("onDismiss")
+    val buttons = (node.props["buttons"] as? kotlinx.serialization.json.JsonArray) ?: kotlinx.serialization.json.JsonArray(emptyList())
+    val parsed = buttons.mapNotNull { entry ->
+        val arr = entry as? kotlinx.serialization.json.JsonArray ?: return@mapNotNull null
+        val title = (arr[0] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: return@mapNotNull null
+        val id = (arr[2] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull() ?: return@mapNotNull null
+        title to id
+    }
+    AlertDialog(
+        onDismissRequest = { onDismiss?.let { SwiftBridge.sink.invokeVoid(it) } },
+        title = { Text(node.string("title") ?: "") },
+        text = { node.string("message")?.let { Text(it) } },
+        confirmButton = {
+            parsed.firstOrNull()?.let { (title, id) ->
+                TextButton(onClick = { SwiftBridge.sink.invokeVoid(id) }) { Text(title) }
+            }
+        },
+        dismissButton = {
+            if (parsed.size > 1) {
+                val (title, id) = parsed[1]
+                TextButton(onClick = { SwiftBridge.sink.invokeVoid(id) }) { Text(title) }
+            }
+        },
+    )
+}
+
+private fun ViewNode.stringArray(key: String): List<String> {
+    val arr = props[key] as? kotlinx.serialization.json.JsonArray ?: return emptyList()
+    return arr.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
 }

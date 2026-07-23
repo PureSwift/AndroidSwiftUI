@@ -4,32 +4,28 @@ import AndroidSwiftUI
 import SwiftUI
 #endif
 
-/// Gallery of playground screens. A picker selects the active screen; full
-/// `NavigationStack`/`List` navigation returns in a later step.
+/// Gallery of playground screens, navigated with a `NavigationStack`. Each row
+/// pushes a feature screen; `List`-based navigation returns with lazy
+/// containers in the next step.
 struct ContentView: View {
 
-    @State
-    private var screen = "Controls"
-
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("Screen", selection: $screen) {
-                Text("Text").tag("Text")
-                Text("Buttons").tag("Buttons")
-                Text("Stacks").tag("Stacks")
-                Text("State").tag("State")
-                Text("Controls").tag("Controls")
-                Text("Modifiers").tag("Modifiers")
-                Text("Observation").tag("Observation")
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 0) {
+                    NavigationLink("Text", destination: TextScreen())
+                    NavigationLink("Buttons", destination: ButtonScreen())
+                    NavigationLink("Stacks", destination: StacksScreen())
+                    NavigationLink("State", destination: StateScreen())
+                    NavigationLink("Controls", destination: ControlsScreen())
+                    NavigationLink("Modifiers", destination: ModifierScreen())
+                    NavigationLink("Observation", destination: ObservationScreen())
+                    NavigationLink("Navigation", destination: NavigationScreen())
+                    NavigationLink("Sheets", destination: SheetScreen())
+                    NavigationLink("Tabs", destination: TabScreen())
+                }
             }
-            Divider()
-            if screen == "Text" { TextScreen() }
-            if screen == "Buttons" { ButtonScreen() }
-            if screen == "Stacks" { StacksScreen() }
-            if screen == "State" { StateScreen() }
-            if screen == "Controls" { ControlsScreen() }
-            if screen == "Modifiers" { ModifierScreen() }
-            if screen == "Observation" { ObservationScreen() }
+            .navigationTitle("Gallery")
         }
     }
 }

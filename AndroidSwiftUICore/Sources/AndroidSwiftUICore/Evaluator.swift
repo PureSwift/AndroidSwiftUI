@@ -15,6 +15,8 @@ public struct ResolveContext {
     public let storage: StateStorage
     public let callbacks: CallbackRegistry
     public var environment: EnvironmentStorage
+    /// Collects the `navigationTitle` of the screen currently being resolved.
+    public var titleSink: TitleSink?
     public var path: String
     public var depth: Int
 
@@ -22,12 +24,14 @@ public struct ResolveContext {
         storage: StateStorage,
         callbacks: CallbackRegistry,
         environment: EnvironmentStorage = EnvironmentStorage(),
+        titleSink: TitleSink? = nil,
         path: String = "",
         depth: Int = 0
     ) {
         self.storage = storage
         self.callbacks = callbacks
         self.environment = environment
+        self.titleSink = titleSink
         self.path = path
         self.depth = depth
     }
@@ -72,6 +76,21 @@ public protocol _GroupView {
     func _flatten(into nodes: inout [RenderNode], context: ResolveContext)
 }
 
+/// A content wrapper with a side effect during resolution (registering a
+/// navigation destination, recording a title, presenting a sheet). Returns the
+/// content to continue resolving, and may mutate the context.
+public protocol _ResolutionEffectView {
+    func _applyEffect(_ context: inout ResolveContext) -> any View
+}
+
+/// Per-screen scratchpad collecting presentation attributes declared inside a
+/// screen's body — its `navigationTitle` and a sheet's `presentationDetents`.
+public final class TitleSink {
+    public var title: String?
+    public var detents: [PresentationDetent] = []
+    public init() {}
+}
+
 public enum Evaluator {
 
     /// Guards against a self-referential `body`.
@@ -96,7 +115,15 @@ public enum Evaluator {
             var node = resolve(modifier._modifiedContent, context)
             node.modifiers.insert(modifier._modifierNode, at: 0)
             return node
+        case let effect as _ResolutionEffectView:
+            var context = context
+            let content = effect._applyEffect(&context)
+            return resolve(content, context)
         case let primitive as PrimitiveView:
+            // primitives may hold container @State (navigation stack, tab
+            // selection) and read @Environment, so wire both before rendering
+            context.storage.install(in: view, path: context.path)
+            EnvironmentInjector.inject(context.environment, into: view)
             return primitive._render(in: context)
         case let anyView as AnyView:
             return resolve(anyView.storage, context.descending("any"))
@@ -144,6 +171,10 @@ public enum Evaluator {
             var child = context.descending("env")
             child.environment.set(writer._object)
             flatten(writer._content, into: &nodes, context: child)
+        case let effect as _ResolutionEffectView:
+            var context = context
+            let content = effect._applyEffect(&context)
+            flatten(content, into: &nodes, context: context)
         default:
             nodes.append(resolve(view, context))
         }
