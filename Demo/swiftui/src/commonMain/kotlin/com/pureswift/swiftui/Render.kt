@@ -1,6 +1,7 @@
 package com.pureswift.swiftui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
@@ -94,6 +95,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -193,12 +195,26 @@ fun Render(node: ViewNode) {
                 }
             }
 
+            // A Color greedily fills the space offered it (SwiftUI semantics);
+            // fillMaxWidth is applied after the chain so an explicit frame width
+            // still constrains it.
             "Color" -> Box(
                 modifier = node.composeModifiers()
+                    .fillMaxWidth()
                     .background(Color((node.long("color") ?: 0).toInt()))
             )
 
             "Image" -> RenderImage(node)
+
+            "Overlay" -> Box(
+                contentAlignment = zStackAlignment(node),
+                modifier = node.composeModifiers(),
+            ) {
+                node.children.getOrNull(0)?.let { Render(it) }
+                Box(modifier = Modifier.matchParentSize(), contentAlignment = zStackAlignment(node)) {
+                    node.children.getOrNull(1)?.let { Render(it) }
+                }
+            }
 
             "Shape" -> RenderShape(node)
 
@@ -529,10 +545,10 @@ private fun RenderGradient(node: ViewNode) {
         startX == endX -> Brush.verticalGradient(colors)
         else -> Brush.linearGradient(colors)
     }
-    // A gradient fills the available width by default (SwiftUI semantics); an
-    // explicit frame width in the chain still constrains it. fillMaxWidth is
-    // first so a cornerRadius clip in the chain sees the full width.
-    Box(modifier = Modifier.fillMaxWidth().then(node.composeModifiers()).background(brush))
+    // A gradient fills the available width by default (SwiftUI semantics);
+    // fillMaxWidth is applied after the chain so an explicit frame width still
+    // constrains it.
+    Box(modifier = node.composeModifiers().fillMaxWidth().background(brush))
 }
 
 @Composable
@@ -719,6 +735,23 @@ internal fun ViewNode.composeModifiers(): Modifier {
             "scale" -> modifier.scale((entry.args.double("scale") ?: 1.0).toFloat())
 
             "opacity" -> modifier.alpha((entry.args.double("opacity") ?: 1.0).toFloat())
+
+            "border" -> {
+                val color = entry.args.long("color")?.let { Color(it.toInt()) } ?: Color.Black
+                modifier.border((entry.args.double("width") ?: 1.0).dp, color)
+            }
+
+            "shadow" -> modifier.shadow((entry.args.double("radius") ?: 0.0).dp)
+
+            "clipShape" -> {
+                val shape = when (entry.args.string("shape")) {
+                    "circle" -> CircleShape
+                    "capsule" -> RoundedCornerShape(percent = 50)
+                    "roundedRectangle" -> RoundedCornerShape((entry.args.double("cornerRadius") ?: 0.0).dp)
+                    else -> RectangleShape
+                }
+                modifier.clip(shape)
+            }
 
             "onTapGesture" -> {
                 val id = entry.args.long("action")

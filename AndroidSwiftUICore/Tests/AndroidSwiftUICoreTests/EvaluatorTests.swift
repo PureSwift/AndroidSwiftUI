@@ -180,6 +180,26 @@ struct ModifierTests {
         let flag = node.modifiers.first { $0.kind == "disabled" }
         #expect(flag?.args["value"] == .bool(true))
     }
+
+    @Test("Border emits its color and width")
+    func border() {
+        let node = ViewHost(Text("x").border(.blue, width: 2)).evaluate()
+        let border = node.modifiers.first { $0.kind == "border" }
+        #expect(border?.args["color"] == Color.blue.propValue)
+        #expect(border?.args["width"] == .double(2))
+    }
+
+    @Test("clipShape emits the shape kind")
+    func clipShape() {
+        let node = ViewHost(Text("x").clipShape(Circle())).evaluate()
+        #expect(node.modifiers.contains { $0.kind == "clipShape" && $0.args["shape"] == .string("circle") })
+    }
+
+    @Test("shadow emits its radius")
+    func shadow() {
+        let node = ViewHost(Text("x").shadow(radius: 6)).evaluate()
+        #expect(node.modifiers.first { $0.kind == "shadow" }?.args["radius"] == .double(6))
+    }
 }
 
 // MARK: - Graphics
@@ -216,5 +236,16 @@ struct GraphicsTests {
         let node = ViewHost(Image(systemName: "star.fill")).evaluate()
         #expect(node.type == "Image")
         #expect(node.props["systemName"] == .string("star.fill"))
+    }
+
+    @Test("Overlay emits base and overlay children with alignment")
+    func overlay() {
+        let node = ViewHost(Color.blue.overlay(alignment: .bottomTrailing) { Text("badge") }).evaluate()
+        #expect(node.type == "Overlay")
+        #expect(node.children.count == 2)
+        #expect(node.children[0].type == "Color")
+        #expect(firstTextString(node.children[1]) == "badge")
+        #expect(node.props["horizontal"] == .string("trailing"))
+        #expect(node.props["vertical"] == .string("bottom"))
     }
 }
