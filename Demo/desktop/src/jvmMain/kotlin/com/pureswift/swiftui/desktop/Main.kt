@@ -64,14 +64,33 @@ object Fixtures {
     )
 }
 
-fun main() = application {
-    Window(onCloseRequest = ::exitApplication, title = "AndroidSwiftUI desktop rig") {
-        MaterialTheme {
-            Surface {
-                RigContent()
+fun main() {
+    val live = SwiftRuntime.load()
+    application {
+        Window(onCloseRequest = ::exitApplication, title = "AndroidSwiftUI desktop rig") {
+            MaterialTheme {
+                Surface {
+                    if (live) {
+                        LiveContent()
+                    } else {
+                        RigContent()
+                    }
+                }
             }
         }
     }
+}
+
+/// Live mode: the Swift dylib evaluates its root view and drives the store.
+@Composable
+private fun LiveContent() {
+    val store = remember {
+        TreeStore().also {
+            com.pureswift.swiftui.SwiftBridge.sink = com.pureswift.swiftui.SwiftCallbackSink()
+            SwiftRuntime().start(it)
+        }
+    }
+    store.root?.let { Render(it) }
 }
 
 @Composable

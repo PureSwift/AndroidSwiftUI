@@ -2,10 +2,12 @@ package com.pureswift.swiftui
 
 import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 
 /// One entry in a node's ordered modifier chain. Order is significant: the
@@ -38,6 +40,33 @@ data class ViewNode(
     val count: Int? = null,
     val itemProviderId: Long? = null,
 ) {
+
+    /// Bridge constructor: the Swift materializer builds nodes through this,
+    /// crossing JNI with flat arrays (one call per node, arrays as single
+    /// arguments). Prop and modifier-arg values arrive as JSON literals
+    /// ("\"text\"", "42", "true"), keeping the typed JsonObject model without
+    /// per-field JNI calls. Negative count/provider mean "absent".
+    constructor(
+        type: String,
+        id: String,
+        propKeys: Array<String>,
+        propValues: Array<String>,
+        modifierKinds: Array<String>,
+        modifierArgs: Array<String>,
+        children: Array<ViewNode>,
+        count: Int,
+        itemProviderId: Long,
+    ) : this(
+        type = type,
+        id = id,
+        props = JsonObject(propKeys.indices.associate { propKeys[it] to Json.parseToJsonElement(propValues[it]) }),
+        modifiers = modifierKinds.indices.map {
+            ModifierNode(modifierKinds[it], Json.parseToJsonElement(modifierArgs[it]).jsonObject)
+        },
+        children = children.toList(),
+        count = if (count >= 0) count else null,
+        itemProviderId = if (itemProviderId >= 0) itemProviderId else null,
+    )
 
     // Typed prop accessors used by the interpreter.
 

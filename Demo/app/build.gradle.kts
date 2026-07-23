@@ -67,6 +67,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":swiftui"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
