@@ -146,4 +146,38 @@ struct ModifierTests {
         let limit = node.modifiers.first { $0.kind == "lineLimit" }
         #expect(limit?.args["count"] == .int(2))
     }
+
+    @Test("onTapGesture registers a callback and emits its id")
+    func onTapGesture() {
+        var tapped = false
+        let host = ViewHost(Text("x").onTapGesture { tapped = true })
+        let node = host.evaluate()
+        let tap = node.modifiers.first { $0.kind == "onTapGesture" }
+        guard case .int(let id)? = tap?.args["action"] else {
+            Issue.record("missing action id"); return
+        }
+        host.callbacks.invokeVoid(Int64(id))
+        #expect(tapped)
+    }
+
+    @Test("onAppear and onDisappear emit distinct callback kinds")
+    func appearDisappear() {
+        let node = ViewHost(Text("x").onAppear {}.onDisappear {}).evaluate()
+        #expect(node.modifiers.contains { $0.kind == "onAppear" })
+        #expect(node.modifiers.contains { $0.kind == "onDisappear" })
+    }
+
+    @Test("onChange emits a token describing the observed value")
+    func onChange() {
+        let node = ViewHost(Text("x").onChange(of: 42) {}).evaluate()
+        let change = node.modifiers.first { $0.kind == "onChange" }
+        #expect(change?.args["token"] == .string("42"))
+    }
+
+    @Test("disabled emits its flag")
+    func disabled() {
+        let node = ViewHost(Text("x").disabled(true)).evaluate()
+        let flag = node.modifiers.first { $0.kind == "disabled" }
+        #expect(flag?.args["value"] == .bool(true))
+    }
 }
