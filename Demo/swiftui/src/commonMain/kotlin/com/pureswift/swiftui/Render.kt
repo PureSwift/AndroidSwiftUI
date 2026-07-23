@@ -13,10 +13,14 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
@@ -845,16 +849,7 @@ internal fun ViewNode.composeModifiers(): Modifier {
                 }
             }
 
-            "frame" -> {
-                val width = entry.args.double("width")
-                val height = entry.args.double("height")
-                when {
-                    width != null && height != null -> modifier.size(animatedDp(width.dp, spec), animatedDp(height.dp, spec))
-                    width != null -> modifier.width(animatedDp(width.dp, spec))
-                    height != null -> modifier.height(animatedDp(height.dp, spec))
-                    else -> modifier
-                }
-            }
+            "frame" -> foldFrame(modifier, entry, spec)
 
             "background" -> {
                 val argb = entry.args.long("color") ?: 0
@@ -911,6 +906,56 @@ internal fun ViewNode.composeModifiers(): Modifier {
         }
     }
     return modifier
+}
+
+// Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded
+// (widthIn/heightIn), and content alignment within the resulting box.
+@Composable
+private fun foldFrame(base: Modifier, entry: ModifierNode, spec: AnimSpec?): Modifier {
+    var m = base
+    val fixedW = entry.args.double("width")
+    val fixedH = entry.args.double("height")
+    val minW = entry.args.double("minWidth")
+    val maxW = entry.args.double("maxWidth")
+    val minH = entry.args.double("minHeight")
+    val maxH = entry.args.double("maxHeight")
+    val fillW = entry.args.bool("fillWidth") == true
+    val fillH = entry.args.bool("fillHeight") == true
+
+    when {
+        fixedW != null -> m = m.width(animatedDp(fixedW.dp, spec))
+        fillW -> m = m.fillMaxWidth()
+        minW != null || maxW != null -> m = m.widthIn(
+            min = minW?.dp ?: Dp.Unspecified,
+            max = maxW?.dp ?: Dp.Unspecified,
+        )
+    }
+    when {
+        fixedH != null -> m = m.height(animatedDp(fixedH.dp, spec))
+        fillH -> m = m.fillMaxHeight()
+        minH != null || maxH != null -> m = m.heightIn(
+            min = minH?.dp ?: Dp.Unspecified,
+            max = maxH?.dp ?: Dp.Unspecified,
+        )
+    }
+    val h = entry.args.string("horizontal")
+    val v = entry.args.string("vertical")
+    if (h != null || v != null) {
+        m = m.wrapContentSize(frameAlignment(h ?: "center", v ?: "center"))
+    }
+    return m
+}
+
+private fun frameAlignment(horizontal: String, vertical: String): Alignment = when (vertical to horizontal) {
+    "top" to "leading" -> Alignment.TopStart
+    "top" to "center" -> Alignment.TopCenter
+    "top" to "trailing" -> Alignment.TopEnd
+    "center" to "leading" -> Alignment.CenterStart
+    "center" to "trailing" -> Alignment.CenterEnd
+    "bottom" to "leading" -> Alignment.BottomStart
+    "bottom" to "center" -> Alignment.BottomCenter
+    "bottom" to "trailing" -> Alignment.BottomEnd
+    else -> Alignment.Center
 }
 
 // Always-called animated wrappers: the underlying Animatable persists across
