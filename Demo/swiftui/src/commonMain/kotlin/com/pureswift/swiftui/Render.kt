@@ -980,11 +980,26 @@ internal fun ViewNode.composeModifiers(): Modifier {
                 if (off) modifier.alpha(0.38f) else modifier
             }
 
-            else -> modifier // unknown modifier: ignore, never crash rendering
+            else -> modifier // consumed elsewhere (Text/RenderChild/effects) or unknown
         }
+    }
+    // Schema-drift visibility: a kind no consumer recognizes gets a red outline,
+    // the modifier-level analog of the unknown-node diagnostic.
+    if (modifiers.any { it.kind !in KNOWN_MODIFIER_KINDS }) {
+        modifier = modifier.border(1.dp, Color.Red)
     }
     return modifier
 }
+
+// Every modifier kind some consumer handles — composeModifiers folds most;
+// the rest are read by RenderText, RenderChild (environment), RenderEffects, or
+// container branches (tag/tabItem). A kind outside this set is schema drift.
+private val KNOWN_MODIFIER_KINDS = setOf(
+    "padding", "frame", "background", "cornerRadius", "offset", "rotation",
+    "scale", "opacity", "border", "shadow", "clipShape", "onTapGesture", "disabled",
+    "font", "fontWeight", "italic", "foregroundColor", "lineLimit", "multilineTextAlignment",
+    "tint", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
+)
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded
 // (widthIn/heightIn), and content alignment within the resulting box.
