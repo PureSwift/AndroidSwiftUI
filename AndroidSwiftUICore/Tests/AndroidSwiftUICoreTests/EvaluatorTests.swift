@@ -269,6 +269,28 @@ struct GraphicsTests {
         #expect(node.props["url"] == .string("https://example.com/clip.mp4"))
     }
 
+    @Test("ComposableView emits a Composable node naming its factory with typed props")
+    func composableView() {
+        let node = ViewHost(
+            ComposableView("RatingBar", props: ["rating": 3.5, "max": 5, "editable": true, "id": "abc"])
+        ).evaluate()
+        #expect(node.type == "Composable")
+        #expect(node.props["name"] == .string("RatingBar"))
+        #expect(node.props["rating"] == .double(3.5))
+        #expect(node.props["max"] == .int(5))
+        #expect(node.props["editable"] == .bool(true))
+        #expect(node.props["id"] == .string("abc"))
+    }
+
+    @Test("ComposableView forwards child content")
+    func composableViewChildren() {
+        let node = ViewHost(
+            ComposableView("DashedBorder") { Text("inside") }
+        ).evaluate()
+        #expect(node.type == "Composable")
+        #expect(firstTextString(node.children.first ?? node) == "inside")
+    }
+
     @Test("Overlay emits base and overlay children with alignment")
     func overlay() {
         let node = ViewHost(Color.blue.overlay(alignment: .bottomTrailing) { Text("badge") }).evaluate()
