@@ -16,6 +16,10 @@ public struct Text: View {
         self.content = String(content)
     }
 
+    public init(verbatim content: String) {
+        self.content = content
+    }
+
     public typealias Body = Never
 }
 

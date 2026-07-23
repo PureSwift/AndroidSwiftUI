@@ -8,7 +8,14 @@
 //  same way; the tests drive it directly.
 //
 
-public final class ViewHost {
+#if canImport(Observation)
+import Observation
+#endif
+
+// Main-thread confined by contract (evaluation, callbacks, and state writes
+// all happen on the platform main thread); @unchecked so the observation
+// change handler — which is @Sendable — can reach onStateChange.
+public final class ViewHost: @unchecked Sendable {
 
     private let root: any View
     private let storage: StateStorage
@@ -32,6 +39,17 @@ public final class ViewHost {
     public func evaluate() -> RenderNode {
         callbacks.beginGeneration()
         let context = ResolveContext(storage: storage, callbacks: callbacks, path: "root")
+        #if canImport(Observation)
+        // Track @Observable reads during evaluation: a later mutation of any
+        // observed property schedules a re-evaluation, exactly like a @State
+        // write. Re-arms itself because the change handler triggers evaluate().
+        return withObservationTracking {
+            Evaluator.resolve(root, context)
+        } onChange: { [weak self] in
+            self?.onStateChange?()
+        }
+        #else
         return Evaluator.resolve(root, context)
+        #endif
     }
 }

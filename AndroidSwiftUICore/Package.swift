@@ -8,7 +8,7 @@ import PackageDescription
 // ClassicUI-style desktop renderer it shares its design with).
 let package = Package(
     name: "AndroidSwiftUICore",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v14)],
     products: [
         .library(name: "AndroidSwiftUICore", targets: ["AndroidSwiftUICore"])
     ],

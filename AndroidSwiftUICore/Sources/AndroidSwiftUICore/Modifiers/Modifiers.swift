@@ -104,3 +104,79 @@ public extension View {
         modifier(_BackgroundColorModifier(color: color))
     }
 }
+
+// MARK: - Corner radius
+
+public struct _CornerRadiusModifier: RenderModifier {
+    let radius: Double
+    public var _modifierNode: ModifierNode {
+        ModifierNode(kind: "cornerRadius", args: ["radius": .double(radius)])
+    }
+}
+
+public extension View {
+    func cornerRadius(_ radius: Double) -> ModifiedContent<Self, _CornerRadiusModifier> {
+        modifier(_CornerRadiusModifier(radius: radius))
+    }
+}
+
+// MARK: - Offset
+
+public struct _OffsetModifier: RenderModifier {
+    let x: Double
+    let y: Double
+    public var _modifierNode: ModifierNode {
+        ModifierNode(kind: "offset", args: ["x": .double(x), "y": .double(y)])
+    }
+}
+
+public extension View {
+    func offset(x: Double = 0, y: Double = 0) -> ModifiedContent<Self, _OffsetModifier> {
+        modifier(_OffsetModifier(x: x, y: y))
+    }
+}
+
+// MARK: - Rotation
+
+public struct _RotationModifier: RenderModifier {
+    let degrees: Double
+    public var _modifierNode: ModifierNode {
+        ModifierNode(kind: "rotation", args: ["degrees": .double(degrees)])
+    }
+}
+
+public extension View {
+    func rotationEffect(_ angle: Angle) -> ModifiedContent<Self, _RotationModifier> {
+        modifier(_RotationModifier(degrees: angle.degrees))
+    }
+}
+
+// MARK: - Scale
+
+public struct _ScaleModifier: RenderModifier {
+    let scale: Double
+    public var _modifierNode: ModifierNode {
+        ModifierNode(kind: "scale", args: ["scale": .double(scale)])
+    }
+}
+
+public extension View {
+    func scaleEffect(_ scale: Double) -> ModifiedContent<Self, _ScaleModifier> {
+        modifier(_ScaleModifier(scale: scale))
+    }
+}
+
+// MARK: - Opacity
+
+public struct _OpacityModifier: RenderModifier {
+    let opacity: Double
+    public var _modifierNode: ModifierNode {
+        ModifierNode(kind: "opacity", args: ["opacity": .double(opacity)])
+    }
+}
+
+public extension View {
+    func opacity(_ opacity: Double) -> ModifiedContent<Self, _OpacityModifier> {
+        modifier(_OpacityModifier(opacity: opacity))
+    }
+}

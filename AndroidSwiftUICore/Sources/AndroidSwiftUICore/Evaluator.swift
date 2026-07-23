@@ -14,20 +14,42 @@ public struct ResolveContext {
 
     public let storage: StateStorage
     public let callbacks: CallbackRegistry
+    public var environment: EnvironmentStorage
     public var path: String
     public var depth: Int
 
-    public init(storage: StateStorage, callbacks: CallbackRegistry, path: String = "", depth: Int = 0) {
+    public init(
+        storage: StateStorage,
+        callbacks: CallbackRegistry,
+        environment: EnvironmentStorage = EnvironmentStorage(),
+        path: String = "",
+        depth: Int = 0
+    ) {
         self.storage = storage
         self.callbacks = callbacks
+        self.environment = environment
         self.path = path
         self.depth = depth
     }
 
     /// Context for a child at a structurally stable position.
     public func descending(_ component: String) -> ResolveContext {
-        ResolveContext(storage: storage, callbacks: callbacks, path: path + "/" + component, depth: depth + 1)
+        var context = self
+        context.path += "/" + component
+        context.depth += 1
+        return context
     }
+}
+
+/// Type-erased access to the environment-writer wrapper.
+internal protocol _AnyEnvironmentWriter {
+    var _object: AnyObject { get }
+    var _content: any View { get }
+}
+
+extension _EnvironmentWriterView: _AnyEnvironmentWriter {
+    var _object: AnyObject { object }
+    var _content: any View { content }
 }
 
 // MARK: - Primitive / dispatch protocols
@@ -78,9 +100,14 @@ public enum Evaluator {
             return primitive._render(in: context)
         case let anyView as AnyView:
             return resolve(anyView.storage, context.descending("any"))
+        case let writer as _AnyEnvironmentWriter:
+            var child = context.descending("env")
+            child.environment.set(writer._object)
+            return resolve(writer._content, child)
         default:
             let child = context.descending("\(type(of: view))")
             child.storage.install(in: view, path: child.path)
+            EnvironmentInjector.inject(child.environment, into: view)
             return resolve(body(of: view), child)
         }
     }
@@ -113,6 +140,10 @@ public enum Evaluator {
             }
         case let anyView as AnyView:
             flatten(anyView.storage, into: &nodes, context: context.descending("any"))
+        case let writer as _AnyEnvironmentWriter:
+            var child = context.descending("env")
+            child.environment.set(writer._object)
+            flatten(writer._content, into: &nodes, context: child)
         default:
             nodes.append(resolve(view, context))
         }
