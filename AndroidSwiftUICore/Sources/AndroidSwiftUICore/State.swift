@@ -107,6 +107,20 @@ public final class StateStorage {
         self.reflector = reflector
     }
 
+    private var persistentObjects: [String: AnyObject] = [:]
+
+    /// Retrieves (or creates) a persistent reference object keyed by identity
+    /// path — the backing store for container state like a navigation stack,
+    /// which must survive re-evaluation without living in a view's `@State`.
+    public func persistentObject<T: AnyObject>(at path: String, create: () -> T) -> T {
+        if let existing = persistentObjects[path] as? T {
+            return existing
+        }
+        let object = create()
+        persistentObjects[path] = object
+        return object
+    }
+
     /// Registers the state properties of a freshly built view at `path`.
     public func install(in view: any View, path: String) {
         reflector.forEachStateProperty(in: view) { label, anyBox in

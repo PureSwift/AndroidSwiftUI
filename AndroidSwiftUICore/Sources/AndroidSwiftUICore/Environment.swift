@@ -2,14 +2,39 @@
 //  Environment.swift
 //  AndroidSwiftUICore
 //
-//  Object environment: values flow DOWN the evaluation (they shape body
-//  evaluation) and never cross the bridge. `@Environment(Model.self)` reads an
-//  object a parent injected with `.environment(model)`.
+//  Environment values flow DOWN evaluation (they shape body evaluation) and
+//  never cross the bridge. Two forms: object environment
+//  (`@Environment(Model.self)`, injected with `.environment(model)`) and
+//  keyPath environment (`@Environment(\.dismiss)`, read from EnvironmentValues).
 //
 
-/// Per-subtree environment values, keyed by object type.
+/// Keyed environment values a subtree reads by keyPath.
+public struct EnvironmentValues: Sendable {
+
+    /// Dismisses the nearest presentation (a pushed nav entry or a sheet).
+    public var dismiss = DismissAction { }
+
+    public init() {}
+}
+
+/// Closes the nearest presentation context. `dismiss()` calls it.
+public struct DismissAction: Sendable {
+
+    private let action: @Sendable () -> Void
+
+    public init(_ action: @escaping @Sendable () -> Void) {
+        self.action = action
+    }
+
+    public func callAsFunction() {
+        action()
+    }
+}
+
+/// Per-subtree environment: keyed values plus injected objects.
 public struct EnvironmentStorage {
 
+    public var values = EnvironmentValues()
     var objects: [ObjectIdentifier: AnyObject] = [:]
 
     public init() {}
@@ -23,23 +48,35 @@ public struct EnvironmentStorage {
     }
 }
 
-/// Reads an object from the environment.
+/// Reads a value from the environment — an injected object or a keyPath value.
 @propertyWrapper
-public struct Environment<Value: AnyObject> {
+public struct Environment<Value> {
 
+    internal enum Source {
+        case object
+        case keyPath(KeyPath<EnvironmentValues, Value>)
+    }
+
+    internal let source: Source
     internal let box = EnvironmentBox<Value>()
 
-    public init(_ type: Value.Type) {}
+    public init(_ type: Value.Type) where Value: AnyObject {
+        self.source = .object
+    }
+
+    public init(_ keyPath: KeyPath<EnvironmentValues, Value>) {
+        self.source = .keyPath(keyPath)
+    }
 
     public var wrappedValue: Value {
         guard let value = box.value else {
-            fatalError("@Environment(\(Value.self).self) read before injection — missing .environment(_:)?")
+            fatalError("@Environment read before injection — missing .environment(_:) or presentation context?")
         }
         return value
     }
 }
 
-internal final class EnvironmentBox<Value: AnyObject> {
+internal final class EnvironmentBox<Value> {
     var value: Value?
 }
 
@@ -50,7 +87,18 @@ public protocol _EnvironmentProperty {
 
 extension Environment: _EnvironmentProperty {
     public func _inject(from storage: EnvironmentStorage) {
-        box.value = storage.object(of: Value.self)
+        switch source {
+        case .object:
+            if let object = storage.objects[objectKey] as? Value {
+                box.value = object
+            }
+        case .keyPath(let keyPath):
+            box.value = storage.values[keyPath: keyPath]
+        }
+    }
+
+    private var objectKey: ObjectIdentifier {
+        ObjectIdentifier(Value.self)
     }
 }
 
