@@ -57,6 +57,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -419,7 +420,7 @@ private fun RenderResolved(node: ViewNode) {
 // Sheets and alerts ride as hidden children; the presentation layer shows
 // them, so the normal child loop skips them.
 private fun ViewNode.isPresentation(): Boolean =
-    type == "Sheet" || type == "Alert" || type == "ConfirmationDialog"
+    type == "Sheet" || type == "Alert" || type == "ConfirmationDialog" || type == "ToolbarItem"
 
 @Composable
 private fun RenderChildren(node: ViewNode) {
@@ -1308,20 +1309,47 @@ private fun RenderNavStack(node: ViewNode) {
     val depth = node.children.size
     // cache rendered screens by index so a popped screen can animate out
     val topIndex = depth - 1
+    val screen = node.children.getOrNull(topIndex)
+    val toolbar = screen?.children?.filter { it.type == "ToolbarItem" }.orEmpty()
+    fun placed(vararg names: String) = toolbar.filter { (it.string("placement") ?: "automatic") in names }
+    val leading = placed("navigationBarLeading")
+    // an unplaced item goes to the trailing side, as it does on iOS
+    val trailing = placed("navigationBarTrailing", "automatic")
+    val principal = placed("principal")
+    val bottom = placed("bottomBar")
+
     Scaffold(
         topBar = {
             val title = titles.getOrNull(topIndex).orEmpty()
-            if (title.isNotEmpty() || depth > 1) {
+            if (title.isNotEmpty() || depth > 1 || toolbar.isNotEmpty()) {
                 TopAppBar(
-                    title = { Text(title) },
+                    title = {
+                        // a principal item replaces the title outright
+                        if (principal.isNotEmpty()) principal.forEach { RenderToolbarItem(it) }
+                        else Text(title)
+                    },
                     navigationIcon = {
-                        if (depth > 1) {
-                            IconButton(onClick = { onPop?.let { SwiftBridge.sink.invokeVoid(it) } }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (depth > 1) {
+                                IconButton(onClick = { onPop?.let { SwiftBridge.sink.invokeVoid(it) } }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                }
                             }
+                            leading.forEach { RenderToolbarItem(it) }
                         }
                     },
+                    actions = { trailing.forEach { RenderToolbarItem(it) } },
                 )
+            }
+        },
+        bottomBar = {
+            if (bottom.isNotEmpty()) {
+                BottomAppBar {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                    ) { bottom.forEach { RenderToolbarItem(it) } }
+                }
             }
         },
     ) { padding ->
@@ -1418,6 +1446,12 @@ private fun RenderTabView(node: ViewNode) {
             current?.let { Render(it) }
         }
     }
+}
+
+// A toolbar item's content, lifted out of the screen body into the bar.
+@Composable
+private fun RenderToolbarItem(item: ViewNode) {
+    item.children.forEach { RenderChild(it) }
 }
 
 // Sheets and alerts ride as hidden children of a screen node; present them
