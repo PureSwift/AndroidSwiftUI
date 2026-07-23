@@ -76,6 +76,7 @@ extension NavigationStack: PrimitiveView {
         // captures its navigationTitle
         var screens: [RenderNode] = []
         var titles: [PropValue] = []
+        var searches: [PropValue] = []
 
         func resolveScreen(_ view: any View, index: Int, canDismiss: Bool) {
             var childContext = context.descending("screen\(index)")
@@ -87,6 +88,17 @@ extension NavigationStack: PrimitiveView {
             childContext.titleSink = sink
             screens.append(Evaluator.resolve(view, childContext))
             titles.append(.string(sink.title ?? ""))
+            // Each screen carries its search field descriptor, or an empty array
+            // when it declared no `searchable`.
+            if let id = sink.searchCallbackID {
+                searches.append(.array([
+                    .string(sink.searchText ?? ""),
+                    .int(Int(id)),
+                    .string(sink.searchPrompt ?? ""),
+                ]))
+            } else {
+                searches.append(.array([]))
+            }
         }
 
         resolveScreen(root, index: 0, canDismiss: false)
@@ -99,7 +111,7 @@ extension NavigationStack: PrimitiveView {
         return RenderNode(
             type: "NavStack",
             id: context.path,
-            props: ["titles": .array(titles), "onPop": .int(Int(popID))],
+            props: ["titles": .array(titles), "searches": .array(searches), "onPop": .int(Int(popID))],
             children: screens
         )
     }
@@ -177,6 +189,31 @@ extension _NavigationTitleView: _ResolutionEffectView {
 public extension View {
     func navigationTitle<S: StringProtocol>(_ title: S) -> _NavigationTitleView<Self> {
         _NavigationTitleView(title: String(title), content: self)
+    }
+}
+
+/// Attaches a search field to the enclosing navigation stack, bound to `text`.
+public struct _SearchableView<Content: View>: View {
+    internal let text: Binding<String>
+    internal let prompt: String?
+    internal let content: Content
+    public typealias Body = Never
+}
+
+extension _SearchableView: _ResolutionEffectView {
+    public func _applyEffect(_ context: inout ResolveContext) -> any View {
+        let binding = text
+        let id = context.callbacks.register(.string { binding.wrappedValue = $0 })
+        context.titleSink?.searchText = text.wrappedValue
+        context.titleSink?.searchCallbackID = id
+        context.titleSink?.searchPrompt = prompt
+        return content
+    }
+}
+
+public extension View {
+    func searchable(text: Binding<String>, prompt: String? = nil) -> _SearchableView<Self> {
+        _SearchableView(text: text, prompt: prompt, content: self)
     }
 }
 

@@ -151,6 +151,38 @@ struct NavigationTests {
         #expect(node.props["hasConfirmationDialog"] == nil)   // dismissed
     }
 
+    @Test("searchable surfaces a per-screen field whose input drives its binding")
+    func searchable() {
+        struct Screen: View {
+            @State var query = ""
+            var body: some View {
+                NavigationStack {
+                    Text("Results for \(query)")
+                        .searchable(text: $query, prompt: "Find")
+                }
+            }
+        }
+        let host = ViewHost(Screen())
+        let node = host.evaluate()
+        #expect(node.type == "NavStack")
+        guard case .array(let searches)? = node.props["searches"],
+              case .array(let entry) = searches[0], entry.count == 3 else {
+            Issue.record("expected a search descriptor for the root screen"); return
+        }
+        #expect(entry[0] == .string(""))          // current text
+        #expect(entry[2] == .string("Find"))      // prompt
+        guard case .int(let id) = entry[1] else {
+            Issue.record("missing search callback id"); return
+        }
+        host.callbacks.invokeString(Int64(id), "abc")
+        let updated = host.evaluate()
+        guard case .array(let searches2)? = updated.props["searches"],
+              case .array(let entry2) = searches2[0] else {
+            Issue.record("missing search descriptor after input"); return
+        }
+        #expect(entry2[0] == .string("abc"))       // binding round-tripped
+    }
+
     @Test("TabView emits tabs with their item labels and selection")
     func tabs() {
         struct Screen: View {
