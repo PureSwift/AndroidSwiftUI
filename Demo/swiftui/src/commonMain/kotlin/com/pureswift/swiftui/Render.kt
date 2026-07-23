@@ -34,6 +34,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -240,6 +242,10 @@ fun Render(node: ViewNode) {
 
             "TabView" -> RenderTabView(node)
 
+            "Form" -> RenderForm(node)
+
+            "Section" -> RenderSection(node)
+
             "List" -> RenderList(node)
 
             "LazyVGrid" -> RenderGrid(node, vertical = true)
@@ -310,6 +316,51 @@ private fun RenderStepper(node: ViewNode) {
         Spacer(modifier = Modifier.weight(1f))
         TextButton(onClick = { onDecrement?.let { SwiftBridge.sink.invokeVoid(it) } }) { Text("−", fontSize = 20.sp) }
         TextButton(onClick = { onIncrement?.let { SwiftBridge.sink.invokeVoid(it) } }) { Text("+", fontSize = 20.sp) }
+    }
+}
+
+// A Form scrolls its Sections; non-Section children still render, ungrouped.
+@Composable
+private fun RenderForm(node: ViewNode) {
+    val state = rememberScrollState()
+    Column(modifier = node.composeModifiers().fillMaxSize().verticalScroll(state).padding(vertical = 8.dp)) {
+        RenderChildren(node)
+    }
+}
+
+// An inset, rounded group: uppercase header, rows separated by dividers, footer.
+@Composable
+private fun RenderSection(node: ViewNode) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        node.string("header")?.let {
+            Text(
+                it.uppercase(),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+            )
+        }
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column {
+                val rows = node.children.filter { !it.isPresentation() }
+                rows.forEachIndexed { index, row ->
+                    if (index > 0) HorizontalDivider()
+                    Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) { Render(row) }
+                }
+            }
+        }
+        node.string("footer")?.let {
+            Text(
+                it,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+            )
+        }
     }
 }
 
