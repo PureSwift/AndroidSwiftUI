@@ -48,6 +48,64 @@ struct ControlTests {
         #expect(node.props["text"] == .string("Coleman"))
     }
 
+    @Test("focused drives a field's focus and adopts focus the user gives it")
+    func focusState() {
+        struct Screen: View {
+            @State var name = ""
+            @FocusState var focused = false
+            var body: some View {
+                TextField("Name", text: $name).focused($focused)
+            }
+        }
+        let host = ViewHost(Screen())
+        var node = host.evaluate()
+        #expect(isFocused(node) == false)
+        guard let callback = focusCallback(node) else {
+            Issue.record("missing focus callback"); return
+        }
+        // the user tapping the field reports focus back into the state
+        host.callbacks.invokeBool(callback, true)
+        node = host.evaluate()
+        #expect(isFocused(node) == true)
+        // and blurring clears it
+        host.callbacks.invokeBool(focusCallback(node) ?? callback, false)
+        node = host.evaluate()
+        #expect(isFocused(node) == false)
+    }
+
+    @Test("focused(equals:) arbitrates between fields and a sibling's blur can't steal focus")
+    func focusStateEquals() {
+        enum Field: Hashable { case first, second }
+        struct Screen: View {
+            @State var a = ""
+            @State var b = ""
+            @FocusState var focus: Field? = nil
+            var body: some View {
+                VStack {
+                    TextField("A", text: $a).focused($focus, equals: .first)
+                    TextField("B", text: $b).focused($focus, equals: .second)
+                }
+            }
+        }
+        let host = ViewHost(Screen())
+        var node = host.evaluate()
+        #expect(isFocused(node.children[0]) == false)
+        #expect(isFocused(node.children[1]) == false)
+        guard let firstCallback = focusCallback(node.children[0]),
+              let secondCallback = focusCallback(node.children[1]) else {
+            Issue.record("missing focus callbacks"); return
+        }
+        // second field takes focus
+        host.callbacks.invokeBool(secondCallback, true)
+        node = host.evaluate()
+        #expect(isFocused(node.children[0]) == false)
+        #expect(isFocused(node.children[1]) == true)
+        // the first field's late blur must NOT clear the second field's focus
+        host.callbacks.invokeBool(firstCallback, false)
+        node = host.evaluate()
+        #expect(isFocused(node.children[1]) == true)
+    }
+
     @Test("Picker emits tagged children and maps the selection string back")
     func picker() {
         struct Screen: View {
@@ -214,4 +272,18 @@ struct ControlTests {
         node = host.evaluate()
         #expect(node.props["millis"] == .double(changed.timeIntervalSince1970 * 1000))
     }
+}
+
+/// Whether a field's `focused` modifier currently claims focus.
+private func isFocused(_ node: RenderNode) -> Bool? {
+    guard let mod = node.modifiers.first(where: { $0.kind == "focused" }),
+          case .bool(let value)? = mod.args["isFocused"] else { return nil }
+    return value
+}
+
+/// The callback a field's `focused` modifier reports focus changes through.
+private func focusCallback(_ node: RenderNode) -> Int64? {
+    guard let mod = node.modifiers.first(where: { $0.kind == "focused" }),
+          case .int(let id)? = mod.args["onChange"] else { return nil }
+    return Int64(id)
 }
