@@ -8,6 +8,7 @@ struct StylePlayground: View {
     @State private var taps = 0
     @State private var toggle = true
     @State private var slider = 0.5
+    @State private var name = ""
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -52,9 +53,11 @@ struct StylePlayground: View {
                 }
                 Example("Inherited disabled") {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Both buttons are disabled (taps: \(taps))")
-                        Button("First") { taps += 1 }
-                        Button("Second") { taps += 1 }
+                        Text("Every control below is disabled (taps: \(taps))")
+                        Button("Button") { taps += 1 }
+                        Toggle("Toggle", isOn: $toggle)
+                        Slider(value: $slider, in: 0...1)
+                        TextField("TextField", text: $name)
                     }
                     .disabled(true)
                 }
