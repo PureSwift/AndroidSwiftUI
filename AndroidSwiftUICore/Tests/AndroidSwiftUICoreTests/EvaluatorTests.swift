@@ -249,3 +249,56 @@ struct GraphicsTests {
         #expect(node.props["vertical"] == .string("bottom"))
     }
 }
+
+// MARK: - Animation
+
+@Suite("Animation")
+struct AnimationTests {
+
+    @Test("A withAnimation write stamps the next tree's root, once")
+    func withAnimationStampsRoot() {
+        struct Screen: View {
+            @State var on = false
+            var body: some View { Text("x").opacity(on ? 1 : 0) }
+        }
+        let host = ViewHost(Screen())
+        var node = host.evaluate()
+        #expect(node.props["animationCurve"] == nil)
+        // find the opacity toggle by writing through a registered callback:
+        // simplest is to mutate via withAnimation around a state write driven
+        // by re-linking — use onTapGesture to reach the state.
+        struct Tappable: View {
+            @State var on = false
+            var body: some View {
+                Text("x").opacity(on ? 1 : 0).onTapGesture { withAnimation(.easeIn(duration: 0.2)) { on.toggle() } }
+            }
+        }
+        let tapHost = ViewHost(Tappable())
+        node = tapHost.evaluate()
+        guard case .int(let id)? = node.modifiers.first(where: { $0.kind == "onTapGesture" })?.args["action"] else {
+            Issue.record("missing tap id"); return
+        }
+        tapHost.callbacks.invokeVoid(Int64(id))
+        node = tapHost.evaluate()
+        #expect(node.props["animationCurve"] == .string("easeIn"))
+        #expect(node.props["animationDurationMs"] == .double(200))
+        // a subsequent plain write does not animate
+        node = tapHost.evaluate()
+        #expect(node.props["animationCurve"] == nil)
+    }
+
+    @Test("withAnimation returns its body's value and restores the transaction")
+    func withAnimationScoping() {
+        let result = withAnimation(.linear(duration: 1)) { 41 + 1 }
+        #expect(result == 42)
+        #expect(Transaction._current == nil)
+    }
+
+    @Test(".animation emits curve, duration, and value token")
+    func implicitAnimation() {
+        let node = ViewHost(Text("x").animation(.spring(), value: 3)).evaluate()
+        let anim = node.modifiers.first { $0.kind == "animation" }
+        #expect(anim?.args["curve"] == .string("spring"))
+        #expect(anim?.args["token"] == .string("3"))
+    }
+}
