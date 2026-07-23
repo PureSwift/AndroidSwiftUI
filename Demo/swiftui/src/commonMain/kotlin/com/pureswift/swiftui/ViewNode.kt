@@ -82,3 +82,5 @@ data class ViewNode(
 internal fun JsonObject.double(key: String): Double? = (this[key] as? JsonPrimitive)?.doubleOrNull
 
 internal fun JsonObject.long(key: String): Long? = (this[key] as? JsonPrimitive)?.longOrNull
+
+internal fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.content
