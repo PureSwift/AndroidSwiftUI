@@ -22,6 +22,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
@@ -277,7 +287,7 @@ private fun RenderResolved(node: ViewNode) {
                 contentAlignment = zStackAlignment(node),
                 modifier = node.composeModifiers(),
             ) {
-                RenderChildren(node)
+                RenderZStackChildren(node)
             }
 
             // Outside a stack, a Spacer has no axis to expand along; render as empty.
@@ -603,25 +613,130 @@ private fun pickerLabel(node: ViewNode): String {
 
 @Composable
 private fun ColumnScope.RenderColumnChildren(node: ViewNode) {
-    for (child in node.children) {
-        if (child.isPresentation()) continue
-        if (child.type == "Spacer") {
-            Spacer(modifier = Modifier.weight(1f))
-        } else {
-            Render(child)
+    val slots = rememberTransitionSlots(node)
+    val spec = LocalAnimationSpec.current
+    for ((child, slot) in orderedTransitionChildren(node, slots)) {
+        key(child.id) {
+            when {
+                child.type == "Spacer" -> Spacer(modifier = Modifier.weight(1f))
+                slot != null -> AnimatedVisibility(slot.state, enter = enterFor(child, spec), exit = exitFor(child, spec)) { Render(child) }
+                else -> Render(child)
+            }
         }
     }
 }
 
 @Composable
 private fun RowScope.RenderRowChildren(node: ViewNode) {
-    for (child in node.children) {
-        if (child.isPresentation()) continue
-        if (child.type == "Spacer") {
-            Spacer(modifier = Modifier.weight(1f))
-        } else {
-            Render(child)
+    val slots = rememberTransitionSlots(node)
+    val spec = LocalAnimationSpec.current
+    for ((child, slot) in orderedTransitionChildren(node, slots)) {
+        key(child.id) {
+            when {
+                child.type == "Spacer" -> Spacer(modifier = Modifier.weight(1f))
+                slot != null -> AnimatedVisibility(slot.state, enter = enterFor(child, spec), exit = exitFor(child, spec)) { Render(child) }
+                else -> Render(child)
+            }
         }
+    }
+}
+
+// ZStack children, with transition support.
+@Composable
+private fun RenderZStackChildren(node: ViewNode) {
+    val slots = rememberTransitionSlots(node)
+    val spec = LocalAnimationSpec.current
+    for ((child, slot) in orderedTransitionChildren(node, slots)) {
+        key(child.id) {
+            if (slot != null) {
+                AnimatedVisibility(slot.state, enter = enterFor(child, spec), exit = exitFor(child, spec)) { Render(child) }
+            } else {
+                Render(child)
+            }
+        }
+    }
+}
+
+// --- Transitions: a child with `.transition()` animates as it appears/leaves ---
+
+private fun ViewNode.transition(): ModifierNode? = modifiers.firstOrNull { it.kind == "transition" }
+private fun ViewNode.hasTransition(): Boolean = transition() != null
+
+// A slot keeps an exiting child's node and visibility state alive after it has
+// left the tree, so its exit animation can play out.
+private class TransitionSlot(var node: ViewNode, val state: MutableTransitionState<Boolean>)
+
+@Composable
+private fun rememberTransitionSlots(node: ViewNode): Map<String, TransitionSlot> {
+    val slots = remember { mutableStateMapOf<String, TransitionSlot>() }
+    val presentIds = node.children.filter { !it.isPresentation() && it.hasTransition() }.mapTo(HashSet()) { it.id }
+    node.children.filter { !it.isPresentation() && it.hasTransition() }.forEach { child ->
+        val slot = slots[child.id]
+        if (slot == null) {
+            slots[child.id] = TransitionSlot(child, MutableTransitionState(false).apply { targetState = true })
+        } else {
+            slot.node = child
+            slot.state.targetState = true
+        }
+    }
+    val finished = mutableListOf<String>()
+    slots.forEach { (id, slot) ->
+        if (id !in presentIds) {
+            slot.state.targetState = false                       // begin exit
+            if (slot.state.isIdle && !slot.state.currentState) finished += id  // exit done
+        }
+    }
+    finished.forEach { slots.remove(it) }
+    return slots
+}
+
+// The children to render, in order: present children (each paired with its
+// transition slot if it has one), then any exiting slots not in the tree — so a
+// transition child is rendered at ONE stable call site (keyed by id) whether
+// present or exiting, letting Compose animate the handoff instead of tearing it
+// down.
+private fun orderedTransitionChildren(
+    node: ViewNode,
+    slots: Map<String, TransitionSlot>,
+): List<Pair<ViewNode, TransitionSlot?>> {
+    val present = node.children.filter { !it.isPresentation() }
+    val presentIds = present.mapTo(HashSet()) { it.id }
+    val result = present.map { it to slots[it.id] }
+    val exiting = slots.entries.filter { it.key !in presentIds }.map { it.value.node to it.value }
+    return result + exiting
+}
+
+private fun enterFor(node: ViewNode, spec: AnimSpec?): EnterTransition {
+    val d = spec?.durationMs ?: 300
+    return when (node.transition()?.args?.string("kind")) {
+        "opacity" -> fadeIn(tween(d))
+        "scale" -> scaleIn(tween(d)) + fadeIn(tween(d))
+        "slide" -> slideInHorizontally(tween(d)) { it } + fadeIn(tween(d))
+        "move" -> when (node.transition()?.args?.string("edge")) {
+            "top" -> slideInVertically(tween(d)) { -it }
+            "bottom" -> slideInVertically(tween(d)) { it }
+            "leading" -> slideInHorizontally(tween(d)) { -it }
+            else -> slideInHorizontally(tween(d)) { it }
+        }
+        "identity" -> EnterTransition.None
+        else -> fadeIn(tween(d))
+    }
+}
+
+private fun exitFor(node: ViewNode, spec: AnimSpec?): ExitTransition {
+    val d = spec?.durationMs ?: 300
+    return when (node.transition()?.args?.string("kind")) {
+        "opacity" -> fadeOut(tween(d))
+        "scale" -> scaleOut(tween(d)) + fadeOut(tween(d))
+        "slide" -> slideOutHorizontally(tween(d)) { it } + fadeOut(tween(d))
+        "move" -> when (node.transition()?.args?.string("edge")) {
+            "top" -> slideOutVertically(tween(d)) { -it }
+            "bottom" -> slideOutVertically(tween(d)) { it }
+            "leading" -> slideOutHorizontally(tween(d)) { -it }
+            else -> slideOutHorizontally(tween(d)) { it }
+        }
+        "identity" -> ExitTransition.None
+        else -> fadeOut(tween(d))
     }
 }
 
@@ -997,6 +1112,7 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "scale", "opacity", "border", "shadow", "clipShape", "onTapGesture", "disabled",
     "font", "fontWeight", "italic", "foregroundColor", "lineLimit", "multilineTextAlignment",
     "tint", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
+    "transition",
 )
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded

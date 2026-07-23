@@ -233,6 +233,14 @@ struct ModifierTests {
         let node = ViewHost(Text("x").tint(.green)).evaluate()
         #expect(node.modifiers.first { $0.kind == "tint" }?.args["color"] == Color.green.propValue)
     }
+
+    @Test("transition emits its kind and edge")
+    func transition() {
+        let node = ViewHost(Text("x").transition(.move(edge: .bottom))).evaluate()
+        let transition = node.modifiers.first { $0.kind == "transition" }
+        #expect(transition?.args["kind"] == .string("move"))
+        #expect(transition?.args["edge"] == .string("bottom"))
+    }
 }
 
 // MARK: - Graphics
