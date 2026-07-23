@@ -21,3 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "SwiftAndroid"
 include(":app")
+include(":swiftui")
+include(":desktop")
