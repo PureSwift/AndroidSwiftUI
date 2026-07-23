@@ -20,6 +20,20 @@ class Props internal constructor(private val json: JsonObject) {
     fun bool(key: String): Boolean? = (json[key] as? JsonPrimitive)?.booleanOrNull
     /// A color passed from Swift as `PropValue.color(_:)` (an ARGB int).
     fun color(key: String): Color? = (json[key] as? JsonPrimitive)?.longOrNull?.let { Color(it.toInt()) }
+
+    // Actions: a `ComposableView(actions:)` entry arrives as a callback id; each
+    // accessor returns a typed lambda that dispatches back to Swift, or null if
+    // the key is absent. The factory never sees the id or the bridge.
+    fun voidAction(key: String): (() -> Unit)? =
+        (json[key] as? JsonPrimitive)?.longOrNull?.let { id -> { SwiftBridge.sink.invokeVoid(id) } }
+    fun boolAction(key: String): ((Boolean) -> Unit)? =
+        (json[key] as? JsonPrimitive)?.longOrNull?.let { id -> { v -> SwiftBridge.sink.invokeBool(id, v) } }
+    fun doubleAction(key: String): ((Double) -> Unit)? =
+        (json[key] as? JsonPrimitive)?.longOrNull?.let { id -> { v -> SwiftBridge.sink.invokeDouble(id, v) } }
+    fun intAction(key: String): ((Int) -> Unit)? =
+        (json[key] as? JsonPrimitive)?.longOrNull?.let { id -> { v -> SwiftBridge.sink.invokeInt(id, v) } }
+    fun stringAction(key: String): ((String) -> Unit)? =
+        (json[key] as? JsonPrimitive)?.longOrNull?.let { id -> { v -> SwiftBridge.sink.invokeString(id, v) } }
 }
 
 /// The library's single extension point: Kotlin registers named composables;
