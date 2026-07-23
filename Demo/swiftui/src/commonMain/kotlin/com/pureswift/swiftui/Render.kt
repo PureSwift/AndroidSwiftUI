@@ -131,6 +131,10 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.shape.CircleShape
@@ -434,6 +438,27 @@ private fun RenderTextField(node: ViewNode) {
         local = TextFieldValue(swiftText, selection = androidx.compose.ui.text.TextRange(swiftText.length))
         lastSent = swiftText
     }
+    // `.focused` binding: Swift drives focus through `isFocused`, and the field
+    // reports back when the user moves focus themselves.
+    val focus = node.modifiers.firstOrNull { it.kind == "focused" }
+    val shouldFocus = focus?.args?.string("isFocused") == "true"
+    val onFocusChange = focus?.args?.long("onChange")
+    val requester = remember(node.id) { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    var hasFocus by remember(node.id) { mutableStateOf(false) }
+
+    var fieldModifier = node.composeModifiers().fillMaxWidth()
+    if (focus != null) {
+        fieldModifier = fieldModifier
+            .focusRequester(requester)
+            .onFocusChanged { state ->
+                if (state.isFocused != hasFocus) {
+                    hasFocus = state.isFocused
+                    onFocusChange?.let { SwiftBridge.sink.invokeBool(it, state.isFocused) }
+                }
+            }
+    }
+
     OutlinedTextField(
         value = local,
         onValueChange = { v ->
@@ -446,8 +471,15 @@ private fun RenderTextField(node: ViewNode) {
         label = { Text(node.string("placeholder") ?: "") },
         enabled = node.isEnabled(),
         visualTransformation = if (node.bool("secure") == true) PasswordVisualTransformation() else VisualTransformation.None,
-        modifier = node.composeModifiers().fillMaxWidth(),
+        modifier = fieldModifier,
     )
+
+    if (focus != null) {
+        LaunchedEffect(shouldFocus) {
+            if (shouldFocus && !hasFocus) requester.requestFocus()
+            else if (!shouldFocus && hasFocus) focusManager.clearFocus()
+        }
+    }
 }
 
 // Label, then − / + edge buttons pushed to the trailing side.
@@ -1123,7 +1155,7 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "scale", "opacity", "border", "shadow", "clipShape", "onTapGesture", "disabled",
     "font", "fontWeight", "italic", "foregroundColor", "lineLimit", "multilineTextAlignment",
     "tint", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
-    "transition",
+    "transition", "focused",
 )
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded
