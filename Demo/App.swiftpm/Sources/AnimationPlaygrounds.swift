@@ -10,9 +10,41 @@ struct AnimationPlayground: View {
     @State private var grown = false
     @State private var recolored = false
     @State private var crawled = false
+    @State private var showSlide = false
+    @State private var showScale = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                Example("Transition: move + fade") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button(showSlide ? "Remove" : "Insert") {
+                            withAnimation { showSlide.toggle() }
+                        }
+                        if showSlide {
+                            Text("I move in from the leading edge and fade")
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.blue)
+                                .cornerRadius(8)
+                                .transition(.move(edge: .leading))
+                        }
+                    }
+                }
+                Example("Transition: scale") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button(showScale ? "Remove" : "Insert") {
+                            withAnimation(.spring()) { showScale.toggle() }
+                        }
+                        if showScale {
+                            Text("I scale in and out")
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.purple)
+                                .cornerRadius(8)
+                                .transition(.scale)
+                        }
+                    }
+                }
                 Example("withAnimation: offset") {
                     VStack(alignment: .leading, spacing: 8) {
                         Circle()
