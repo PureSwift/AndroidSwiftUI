@@ -16,6 +16,29 @@ public enum PropValue: Equatable, Sendable {
     case array([PropValue])
 }
 
+// Literal conveniences so custom-composable props read as a plain dictionary:
+// `["url": "https://…", "zoom": 1.5, "stars": 3, "on": true]`.
+extension PropValue: ExpressibleByStringLiteral {
+    public init(stringLiteral value: String) { self = .string(value) }
+}
+extension PropValue: ExpressibleByFloatLiteral {
+    public init(floatLiteral value: Double) { self = .double(value) }
+}
+extension PropValue: ExpressibleByIntegerLiteral {
+    public init(integerLiteral value: Int) { self = .int(value) }
+}
+extension PropValue: ExpressibleByBooleanLiteral {
+    public init(booleanLiteral value: Bool) { self = .bool(value) }
+}
+extension PropValue: ExpressibleByArrayLiteral {
+    public init(arrayLiteral elements: PropValue...) { self = .array(elements) }
+}
+
+public extension PropValue {
+    /// A color as its 0xAARRGGBB integer, for passing to a custom composable.
+    static func color(_ color: Color) -> PropValue { color.propValue }
+}
+
 /// One entry in a node's ordered modifier chain. Order is significant:
 /// `.padding().background()` folds to a Compose `Modifier` in the same order.
 public struct ModifierNode: Equatable, Sendable {
