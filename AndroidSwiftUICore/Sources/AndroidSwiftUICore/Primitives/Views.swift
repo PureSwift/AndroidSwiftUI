@@ -196,8 +196,6 @@ extension SecureField: PrimitiveView {
 
 /// Eager stand-ins: laziness is an optimization the lazy container path (R7)
 /// provides; semantics match the eager stacks.
-public typealias LazyVStack = VStack
-public typealias LazyHStack = HStack
 
 /// An angle in degrees or radians.
 public struct Angle: Equatable, Sendable {
