@@ -50,6 +50,33 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -65,7 +92,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -163,7 +194,11 @@ fun Render(node: ViewNode) {
                     .background(Color((node.long("color") ?: 0).toInt()))
             )
 
-            "Image" -> Text("[${node.string("name") ?: "image"}]", modifier = node.composeModifiers())
+            "Image" -> RenderImage(node)
+
+            "Shape" -> RenderShape(node)
+
+            "LinearGradient" -> RenderGradient(node)
 
             "ProgressView" -> {
                 val value = node.double("value")
@@ -371,6 +406,94 @@ private fun RenderEffects(node: ViewNode) {
 
 private fun ViewNode.isDisabled(): Boolean =
     modifiers.any { it.kind == "disabled" && (it.args["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true" }
+
+// A shape fills its (frame-derived) size with its fill color; without a frame
+// it collapses to zero, matching this backend's no-layout-engine limitation.
+@Composable
+private fun RenderShape(node: ViewNode) {
+    val fill = node.long("fill")?.let { Color(it.toInt()) } ?: Color(0xFF000000)
+    val shape = when (node.string("shape")) {
+        "circle" -> CircleShape
+        "capsule" -> RoundedCornerShape(percent = 50)
+        "roundedRectangle" -> RoundedCornerShape((node.double("cornerRadius") ?: 0.0).dp)
+        else -> RectangleShape
+    }
+    Box(modifier = node.composeModifiers().background(fill, shape))
+}
+
+// Horizontal/vertical when the endpoints share an axis, else a diagonal linear
+// gradient across the frame.
+@Composable
+private fun RenderGradient(node: ViewNode) {
+    val colors = node.colorList("colors").ifEmpty { listOf(Color.Transparent, Color.Transparent) }
+    val startX = node.double("startX") ?: 0.0
+    val startY = node.double("startY") ?: 0.5
+    val endX = node.double("endX") ?: 1.0
+    val endY = node.double("endY") ?: 0.5
+    val brush = when {
+        startY == endY -> Brush.horizontalGradient(colors)
+        startX == endX -> Brush.verticalGradient(colors)
+        else -> Brush.linearGradient(colors)
+    }
+    // A gradient fills the available width by default (SwiftUI semantics); an
+    // explicit frame width in the chain still constrains it. fillMaxWidth is
+    // first so a cornerRadius clip in the chain sees the full width.
+    Box(modifier = Modifier.fillMaxWidth().then(node.composeModifiers()).background(brush))
+}
+
+@Composable
+private fun RenderImage(node: ViewNode) {
+    val icon = node.string("systemName")?.let { materialIcon(it) }
+    if (icon != null) {
+        val tint = node.modifiers.firstOrNull { it.kind == "foregroundColor" }
+            ?.args?.long("color")?.let { Color(it.toInt()) }
+        Icon(
+            imageVector = icon,
+            contentDescription = node.string("systemName"),
+            tint = tint ?: LocalContentColor.current,
+            modifier = node.composeModifiers(),
+        )
+    } else {
+        Text("[${node.string("name") ?: "image"}]", modifier = node.composeModifiers())
+    }
+}
+
+private fun ViewNode.colorList(key: String): List<Color> {
+    val arr = props[key] as? kotlinx.serialization.json.JsonArray ?: return emptyList()
+    return arr.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull()?.let { c -> Color(c.toInt()) } }
+}
+
+// A curated SF Symbol → Material icon map; unknown names fall back to the
+// placeholder text so gaps stay visible.
+private fun materialIcon(name: String): ImageVector? = when (name) {
+    "star", "star.fill" -> Icons.Filled.Star
+    "heart", "heart.fill" -> Icons.Filled.Favorite
+    "trash", "trash.fill" -> Icons.Filled.Delete
+    "person", "person.fill" -> Icons.Filled.Person
+    "gear", "gearshape", "gearshape.fill" -> Icons.Filled.Settings
+    "house", "house.fill" -> Icons.Filled.Home
+    "magnifyingglass" -> Icons.Filled.Search
+    "plus" -> Icons.Filled.Add
+    "checkmark" -> Icons.Filled.Check
+    "xmark" -> Icons.Filled.Close
+    "bell", "bell.fill" -> Icons.Filled.Notifications
+    "envelope", "envelope.fill" -> Icons.Filled.Email
+    "phone", "phone.fill" -> Icons.Filled.Phone
+    "lock", "lock.fill" -> Icons.Filled.Lock
+    "cart", "cart.fill" -> Icons.Filled.ShoppingCart
+    "hand.thumbsup", "hand.thumbsup.fill" -> Icons.Filled.ThumbUp
+    "info", "info.circle" -> Icons.Filled.Info
+    "exclamationmark.triangle" -> Icons.Filled.Warning
+    "square.and.arrow.up" -> Icons.Filled.Share
+    "line.3.horizontal" -> Icons.Filled.Menu
+    "ellipsis" -> Icons.Filled.MoreVert
+    "play", "play.fill" -> Icons.Filled.PlayArrow
+    "arrow.clockwise" -> Icons.Filled.Refresh
+    "calendar" -> Icons.Filled.DateRange
+    "face.smiling" -> Icons.Filled.Face
+    "location", "location.fill" -> Icons.Filled.LocationOn
+    else -> null
+}
 
 // Text-styling modifiers describe attributes of the Text composable itself,
 // not the layout Modifier chain, so they are read off the node here and passed
