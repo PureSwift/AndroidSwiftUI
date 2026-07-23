@@ -227,6 +227,12 @@ struct ModifierTests {
         let node = ViewHost(Text("x").shadow(radius: 6)).evaluate()
         #expect(node.modifiers.first { $0.kind == "shadow" }?.args["radius"] == .double(6))
     }
+
+    @Test("tint emits its color")
+    func tint() {
+        let node = ViewHost(Text("x").tint(.green)).evaluate()
+        #expect(node.modifiers.first { $0.kind == "tint" }?.args["color"] == Color.green.propValue)
+    }
 }
 
 // MARK: - Graphics
