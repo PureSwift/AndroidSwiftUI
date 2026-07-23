@@ -28,6 +28,12 @@ kotlin {
             implementation(compose.material3)
             implementation(libs.kotlinx.serialization.json)
         }
+        androidMain.dependencies {
+            // VideoPlayer: the legacy MediaPlayer stack is unreliable for
+            // remote streams, so the Android player is Media3.
+            implementation("androidx.media3:media3-exoplayer:1.4.1")
+            implementation("androidx.media3:media3-ui:1.4.1")
+        }
         // `external fun` is JVM-only; both targets are JVM, so the bridge's
         // Swift-implemented classes live in a source set they share.
         val jvmShared by creating {
