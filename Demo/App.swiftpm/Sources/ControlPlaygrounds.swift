@@ -13,11 +13,40 @@ struct TextPlayground: View {
                 Example("Verbatim") { Text(verbatim: "Raw string, no interpolation") }
                 Example("Interpolated") { Text("Counter is \(counter)") }
                 Example("Bump the counter") { Button("Increment") { counter += 1 } }
+                Example("Font sizes") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Large title").font(.largeTitle)
+                        Text("Title").font(.title)
+                        Text("Headline").font(.headline)
+                        Text("Body").font(.body)
+                        Text("Caption").font(.caption)
+                    }
+                }
+                Example("Weight & style") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Bold").bold()
+                        Text("Semibold").fontWeight(.semibold)
+                        Text("Italic").italic()
+                        Text("System 24 heavy").font(.system(size: 24, weight: .heavy))
+                    }
+                }
+                Example("Colors") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Red").foregroundColor(.red)
+                        Text("Blue").foregroundColor(.blue)
+                        Text("Green, bold, title").font(.title).bold().foregroundColor(.green)
+                    }
+                }
+                Example("Line limit") {
+                    Text("A longer passage of text that wraps onto multiple lines, capped at two by lineLimit so the rest is truncated.")
+                        .lineLimit(2)
+                }
                 Example("Multiline") {
                     Text("A longer passage of text that wraps onto multiple lines when it no longer fits within the width of the screen.")
                 }
                 Example("Styled") {
                     Text("Blue on a rounded chip")
+                        .foregroundColor(.white)
                         .padding()
                         .background(Color.blue)
                         .cornerRadius(12)

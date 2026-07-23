@@ -108,4 +108,42 @@ struct ModifierTests {
         #expect(frame?.args["width"] == .double(100))
         #expect(frame?.args["height"] == .double(50))
     }
+
+    @Test("Named font emits its style")
+    func fontStyle() {
+        let node = ViewHost(Text("x").font(.headline)).evaluate()
+        let font = node.modifiers.first { $0.kind == "font" }
+        #expect(font?.args["style"] == .string("headline"))
+        #expect(font?.args["size"] == nil)
+    }
+
+    @Test("System font emits size and weight")
+    func systemFont() {
+        let node = ViewHost(Text("x").font(.system(size: 24, weight: .heavy))).evaluate()
+        let font = node.modifiers.first { $0.kind == "font" }
+        #expect(font?.args["size"] == .double(24))
+        #expect(font?.args["weight"] == .string("heavy"))
+    }
+
+    @Test("foregroundColor emits an argb color")
+    func foregroundColor() {
+        let node = ViewHost(Text("x").foregroundColor(.red)).evaluate()
+        let color = node.modifiers.first { $0.kind == "foregroundColor" }
+        #expect(color?.args["color"] == Color.red.propValue)
+    }
+
+    @Test("bold and italic emit their kinds")
+    func boldItalic() {
+        let node = ViewHost(Text("x").bold().italic()).evaluate()
+        let weight = node.modifiers.first { $0.kind == "fontWeight" }
+        #expect(weight?.args["weight"] == .string("bold"))
+        #expect(node.modifiers.contains { $0.kind == "italic" })
+    }
+
+    @Test("lineLimit emits its count")
+    func lineLimit() {
+        let node = ViewHost(Text("x").lineLimit(2)).evaluate()
+        let limit = node.modifiers.first { $0.kind == "lineLimit" }
+        #expect(limit?.args["count"] == .int(2))
+    }
 }

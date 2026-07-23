@@ -64,7 +64,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -79,10 +84,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 fun Render(node: ViewNode) {
     key(node.id) {
         when (node.type) {
-            "Text" -> Text(
-                text = node.string("text") ?: "",
-                modifier = node.composeModifiers(),
-            )
+            "Text" -> RenderText(node)
 
             "Button" -> {
                 val onTap = node.long("onTap")
@@ -330,6 +332,84 @@ private fun zStackAlignment(node: ViewNode): Alignment {
         "bottom" to "trailing" -> Alignment.BottomEnd
         else -> Alignment.Center
     }
+}
+
+// Text-styling modifiers describe attributes of the Text composable itself,
+// not the layout Modifier chain, so they are read off the node here and passed
+// as `Text(...)` parameters. Later (innermost) entries win for scalar
+// attributes. Layout modifiers in the same chain still apply via composeModifiers().
+@Composable
+private fun RenderText(node: ViewNode) {
+    var color = Color.Unspecified
+    var fontSize: TextUnit = TextUnit.Unspecified
+    var weight: FontWeight? = null
+    var fontStyle: FontStyle? = null
+    var maxLines = Int.MAX_VALUE
+    var textAlign: TextAlign? = null
+    for (m in node.modifiers) {
+        when (m.kind) {
+            "font" -> {
+                m.args.string("style")?.let { style ->
+                    fontSize = fontSizeForStyle(style).sp
+                    if (weight == null) weight = defaultWeightForStyle(style)
+                }
+                m.args.double("size")?.let { fontSize = it.sp }
+                m.args.string("weight")?.let { weight = fontWeightFor(it) }
+            }
+            "fontWeight" -> m.args.string("weight")?.let { weight = fontWeightFor(it) }
+            "italic" -> fontStyle = FontStyle.Italic
+            "foregroundColor" -> m.args.long("color")?.let { color = Color(it.toInt()) }
+            "lineLimit" -> maxLines = m.args.long("count")?.toInt() ?: Int.MAX_VALUE
+            "multilineTextAlignment" -> textAlign = when (m.args.string("value")) {
+                "leading" -> TextAlign.Start
+                "trailing" -> TextAlign.End
+                else -> TextAlign.Center
+            }
+        }
+    }
+    Text(
+        text = node.string("text") ?: "",
+        color = color,
+        fontSize = fontSize,
+        fontWeight = weight,
+        fontStyle = fontStyle,
+        maxLines = maxLines,
+        textAlign = textAlign,
+        modifier = node.composeModifiers(),
+    )
+}
+
+// SwiftUI named text styles → point sizes (Compose has no built-in analog).
+private fun fontSizeForStyle(style: String): Double = when (style) {
+    "largeTitle" -> 34.0
+    "title" -> 28.0
+    "title2" -> 22.0
+    "title3" -> 20.0
+    "headline" -> 17.0
+    "body" -> 17.0
+    "callout" -> 16.0
+    "subheadline" -> 15.0
+    "footnote" -> 13.0
+    "caption" -> 12.0
+    "caption2" -> 11.0
+    else -> 17.0
+}
+
+// Only headline carries a non-regular default weight in SwiftUI.
+private fun defaultWeightForStyle(style: String): FontWeight? =
+    if (style == "headline") FontWeight.SemiBold else null
+
+private fun fontWeightFor(name: String): FontWeight = when (name) {
+    "ultraLight" -> FontWeight.ExtraLight
+    "thin" -> FontWeight.Thin
+    "light" -> FontWeight.Light
+    "regular" -> FontWeight.Normal
+    "medium" -> FontWeight.Medium
+    "semibold" -> FontWeight.SemiBold
+    "bold" -> FontWeight.Bold
+    "heavy" -> FontWeight.ExtraBold
+    "black" -> FontWeight.Black
+    else -> FontWeight.Normal
 }
 
 /// Folds a node's ordered modifier chain into a Compose `Modifier`.
