@@ -148,6 +148,53 @@ struct ControlTests {
         #expect(ViewHost(ProgressView(value: 0.5)).evaluate().children.isEmpty)
     }
 
+    @Test("A control style is emitted on the view it is applied to")
+    func controlStyleEmission() {
+        let node = ViewHost(Button("Go") {}.buttonStyle(.bordered)).evaluate()
+        #expect(node.modifiers.first { $0.kind == "buttonStyle" }?.args["style"] == .string("bordered"))
+
+        // each control's style is a distinct kind, so they compose rather than
+        // overwrite one another
+        let both = ViewHost(
+            VStack { Text("x") }
+                .buttonStyle(.plain)
+                .pickerStyle(.segmented)
+        ).evaluate()
+        #expect(both.modifiers.first { $0.kind == "buttonStyle" }?.args["style"] == .string("plain"))
+        #expect(both.modifiers.first { $0.kind == "pickerStyle" }?.args["style"] == .string("segmented"))
+        #expect(both.modifiers.first { $0.kind == "toggleStyle" } == nil)
+    }
+
+    @Test("A style set on a container is inherited by the controls inside it")
+    func controlStyleInheritance() {
+        // The style rides on the container; the interpreter carries it down as
+        // an environment value, so the buttons themselves carry no style of
+        // their own — that inheritance is what makes this different from a
+        // per-node modifier.
+        let node = ViewHost(
+            VStack {
+                Button("One") {}
+                Button("Two") {}
+            }
+            .buttonStyle(.borderedProminent)
+        ).evaluate()
+        #expect(node.type == "VStack")
+        #expect(node.modifiers.first { $0.kind == "buttonStyle" }?.args["style"] == .string("borderedProminent"))
+        #expect(node.children.count == 2)
+        for child in node.children {
+            #expect(child.type == "Button")
+            #expect(child.modifiers.first { $0.kind == "buttonStyle" } == nil)
+        }
+    }
+
+    @Test("Every control style spelling reaches its own modifier kind")
+    func controlStyleKinds() {
+        let toggle = ViewHost(Toggle("t", isOn: .constant(true)).toggleStyle(.checkbox)).evaluate()
+        #expect(toggle.modifiers.first { $0.kind == "toggleStyle" }?.args["style"] == .string("checkbox"))
+        let field = ViewHost(TextField("n", text: .constant("")).textFieldStyle(.plain)).evaluate()
+        #expect(field.modifiers.first { $0.kind == "textFieldStyle" }?.args["style"] == .string("plain"))
+    }
+
     @Test("Picker emits tagged children and maps the selection string back")
     func picker() {
         struct Screen: View {
