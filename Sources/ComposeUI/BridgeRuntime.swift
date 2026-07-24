@@ -1,12 +1,12 @@
 //
 //  BridgeRuntime.swift
-//  AndroidSwiftUIBridge
+//  ComposeUI
 //
 //  Drives a ViewHost against a Kotlin TreeStore: evaluate → materialize →
 //  update, re-running on every state change.
 //
 
-import AndroidSwiftUICore
+import SwiftUICore
 
 public final class BridgeRuntime {
 

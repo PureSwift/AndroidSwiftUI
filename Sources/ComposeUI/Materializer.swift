@@ -1,12 +1,12 @@
 //
 //  Materializer.swift
-//  AndroidSwiftUIBridge
+//  ComposeUI
 //
 //  Walks the core's RenderNode IR and constructs the interpreter's Kotlin
 //  ViewNode objects — the typed transport that replaces string serialization.
 //
 
-import AndroidSwiftUICore
+import SwiftUICore
 import SwiftJava
 
 public enum Materializer {

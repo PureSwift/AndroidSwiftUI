@@ -1,6 +1,6 @@
 //
 //  SwiftCallbackSink.swift
-//  AndroidSwiftUIBridge
+//  ComposeUI
 //
 //  The entire Kotlin→Swift bridge surface. The JNI symbol for each method
 //  derives from THIS signature — the Kotlin `external` declarations in

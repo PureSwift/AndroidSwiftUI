@@ -1,6 +1,6 @@
 //
 //  KotlinBindings.swift
-//  AndroidSwiftUIBridge
+//  ComposeUI
 //
 //  Swift→Kotlin bindings for the interpreter's node model. This is the safe
 //  bridge direction: methods resolve by name+signature lookup and fail loudly
