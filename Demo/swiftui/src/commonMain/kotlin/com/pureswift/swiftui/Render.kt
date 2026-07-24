@@ -13,6 +13,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -331,6 +332,8 @@ private fun RenderResolved(node: ViewNode) {
                 }
             }
 
+            "GeometryReader" -> RenderGeometryReader(node)
+
             "LazyVStack" -> RenderLazyStack(node, vertical = true)
             "LazyHStack" -> RenderLazyStack(node, vertical = false)
 
@@ -543,6 +546,24 @@ private fun RenderToggle(node: ViewNode) {
                 colors = if (tint != null) SwitchDefaults.colors(checkedTrackColor = tint) else SwitchDefaults.colors(),
             )
         }
+    }
+}
+
+// Reports the size the PARENT offers, never the content's own size — that is
+// what keeps measurement from feeding back into itself. Swift ignores a report
+// equal to what it already holds, so a settled layout reports once and stops.
+@Composable
+private fun RenderGeometryReader(node: ViewNode) {
+    val onSize = node.long("onSize")
+    BoxWithConstraints(modifier = node.composeModifiers().fillMaxWidth()) {
+        val width = maxWidth.value.toDouble()
+        // an unbounded height (inside a scrolling parent) isn't a real offer;
+        // report 0 so the content can fall back rather than see infinity
+        val height = if (constraints.hasBoundedHeight) maxHeight.value.toDouble() else 0.0
+        LaunchedEffect(width, height) {
+            onSize?.let { SwiftBridge.sink.invokeString(it, "$width,$height") }
+        }
+        RenderChildren(node)
     }
 }
 
