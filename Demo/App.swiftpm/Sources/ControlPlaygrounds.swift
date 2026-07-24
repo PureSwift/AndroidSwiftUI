@@ -193,6 +193,22 @@ struct ProgressViewPlayground: View {
                         Button("Advance") { progress = progress >= 1 ? 0 : progress + 0.25 }
                     }
                 }
+                Example("With a label") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ProgressView("Loading…")
+                        ProgressView("Copying files", value: progress)
+                    }
+                }
+                Example("progressViewStyle") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        // determinate, but drawn as a ring
+                        ProgressView(value: progress)
+                            .progressViewStyle(.circular)
+                        // indeterminate, but drawn as a bar
+                        ProgressView()
+                            .progressViewStyle(.linear)
+                    }
+                }
             }
         }
     }

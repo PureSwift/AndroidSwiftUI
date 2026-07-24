@@ -82,30 +82,6 @@ extension Image: PrimitiveView {
     }
 }
 
-/// Progress: indeterminate (spinner) or fractional (bar).
-public struct ProgressView: View {
-
-    internal let value: Double?
-
-    public init() {
-        self.value = nil
-    }
-
-    public init<V: BinaryFloatingPoint>(value: V?, total: V = 1.0) {
-        self.value = value.map { Double($0 / total) }
-    }
-
-    public typealias Body = Never
-}
-
-extension ProgressView: PrimitiveView {
-    public func _render(in context: ResolveContext) -> RenderNode {
-        var props: [String: PropValue] = [:]
-        if let value { props["value"] = .double(value) }
-        return RenderNode(type: "ProgressView", id: context.path, props: props)
-    }
-}
-
 /// A control for selecting a value from a bounded range.
 public struct Slider: View {
 

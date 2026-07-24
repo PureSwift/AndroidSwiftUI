@@ -106,6 +106,48 @@ struct ControlTests {
         #expect(isFocused(node.children[1]) == true)
     }
 
+    @Test("ProgressView keeps determinacy and shape independent")
+    func progressViewStyle() {
+        // no value, no style: indeterminate, and the interpreter picks circular
+        let plain = ViewHost(ProgressView()).evaluate()
+        #expect(plain.props["value"] == nil)
+        #expect(plain.modifiers.first { $0.kind == "progressViewStyle" } == nil)
+
+        // a value is normalized against total
+        let valued = ViewHost(ProgressView(value: 25.0, total: 100.0)).evaluate()
+        #expect(valued.props["value"] == .double(0.25))
+
+        // a determinate circular bar — impossible before, since shape was
+        // inferred from determinacy
+        let circular = ViewHost(ProgressView(value: 0.5).progressViewStyle(.circular)).evaluate()
+        #expect(circular.props["value"] == .double(0.5))
+        #expect(circular.modifiers.first { $0.kind == "progressViewStyle" }?.args["style"] == .string("circular"))
+
+        // and an indeterminate linear one
+        let linear = ViewHost(ProgressView().progressViewStyle(.linear)).evaluate()
+        #expect(linear.props["value"] == nil)
+        #expect(linear.modifiers.first { $0.kind == "progressViewStyle" }?.args["style"] == .string("linear"))
+    }
+
+    @Test("ProgressView carries a label when given one")
+    func progressViewLabel() {
+        let titled = ViewHost(ProgressView("Loading")).evaluate()
+        #expect(firstTextString(titled) == "Loading")
+        #expect(titled.props["value"] == nil)
+
+        let both = ViewHost(ProgressView("Copying", value: 0.4)).evaluate()
+        #expect(firstTextString(both) == "Copying")
+        #expect(both.props["value"] == .double(0.4))
+
+        // the builder form takes any view
+        let built = ViewHost(ProgressView(value: 0.1) { Text("Custom") }).evaluate()
+        #expect(firstTextString(built) == "Custom")
+
+        // and the label-free forms stay label-free
+        #expect(ViewHost(ProgressView()).evaluate().children.isEmpty)
+        #expect(ViewHost(ProgressView(value: 0.5)).evaluate().children.isEmpty)
+    }
+
     @Test("Picker emits tagged children and maps the selection string back")
     func picker() {
         struct Screen: View {
