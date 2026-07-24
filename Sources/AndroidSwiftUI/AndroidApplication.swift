@@ -6,6 +6,9 @@
 //
 
 import AndroidKit
+#if canImport(AndroidLooper)
+import AndroidLooper
+#endif
 
 @JavaClass("com.pureswift.swiftandroid.Application")
 open class Application: AndroidApp.Application {
@@ -20,6 +23,15 @@ extension Application {
     func onCreateSwift() {
         log("\(self).\(#function)")
         Application.shared = self
+
+        // Bind the Android main looper to `AndroidMainActor` at process launch.
+        // `Application.onCreate` runs on the main thread — the required call site
+        // — so `@MainActor` and `DispatchQueue.main` dispatch correctly from here
+        // on, without hand-draining `RunLoop.main`.
+        #if canImport(AndroidLooper)
+        let boundMainLooper = AndroidMainActor.setupMainLooper()
+        log("AndroidMainActor.setupMainLooper() -> \(boundMainLooper)")
+        #endif
     }
     
     @JavaMethod
