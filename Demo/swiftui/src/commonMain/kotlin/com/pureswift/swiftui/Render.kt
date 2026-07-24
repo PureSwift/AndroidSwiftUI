@@ -207,6 +207,7 @@ internal val LocalButtonStyle = compositionLocalOf { "automatic" }
 internal val LocalPickerStyle = compositionLocalOf { "automatic" }
 internal val LocalToggleStyle = compositionLocalOf { "automatic" }
 internal val LocalTextFieldStyle = compositionLocalOf { "automatic" }
+internal val LocalLabelStyle = compositionLocalOf { "automatic" }
 
 /// Interprets a Swift-evaluated node tree into Material 3 composables.
 ///
@@ -242,6 +243,7 @@ internal fun RenderChild(node: ViewNode) {
     var pickerStyle = LocalPickerStyle.current
     var toggleStyle = LocalToggleStyle.current
     var textFieldStyle = LocalTextFieldStyle.current
+    var labelStyle = LocalLabelStyle.current
     for (m in node.modifiers) {
         when (m.kind) {
             "font" -> {
@@ -260,6 +262,7 @@ internal fun RenderChild(node: ViewNode) {
             "pickerStyle" -> m.args.string("style")?.let { pickerStyle = it }
             "toggleStyle" -> m.args.string("style")?.let { toggleStyle = it }
             "textFieldStyle" -> m.args.string("style")?.let { textFieldStyle = it }
+            "labelStyle" -> m.args.string("style")?.let { labelStyle = it }
         }
     }
 
@@ -274,6 +277,7 @@ internal fun RenderChild(node: ViewNode) {
         LocalPickerStyle provides pickerStyle,
         LocalToggleStyle provides toggleStyle,
         LocalTextFieldStyle provides textFieldStyle,
+        LocalLabelStyle provides labelStyle,
     ) { RenderResolved(node) }
 }
 
@@ -342,6 +346,8 @@ private fun RenderResolved(node: ViewNode) {
                     }
                 }
             }
+
+            "Label" -> RenderLabel(node)
 
             "Link" -> RenderLink(node)
 
@@ -598,6 +604,24 @@ private fun RenderLink(node: ViewNode) {
         CompositionLocalProvider(LocalInheritedColor provides accent) {
             RenderChildren(node)
         }
+    }
+}
+
+// children are [icon, title]; the inherited label style may drop either half.
+@Composable
+private fun RenderLabel(node: ViewNode) {
+    val icon = node.children.getOrNull(0)
+    val title = node.children.getOrNull(1)
+    val style = LocalLabelStyle.current
+    val showIcon = style != "titleOnly"
+    val showTitle = style != "iconOnly"
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = node.composeModifiers(),
+    ) {
+        if (showIcon) icon?.let { RenderChild(it) }
+        if (showTitle) title?.let { RenderChild(it) }
     }
 }
 
@@ -1548,7 +1572,7 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "transition", "focused", "longPress", "drag", "contentMode", "progressViewStyle",
     "buttonStyle", "pickerStyle", "toggleStyle", "textFieldStyle",
     "accessibilityLabel", "accessibilityValue", "accessibilityHidden",
-    "accessibilityAddTraits", "accessibilityIdentifier",
+    "accessibilityAddTraits", "accessibilityIdentifier", "labelStyle",
 )
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded
