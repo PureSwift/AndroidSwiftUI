@@ -42,6 +42,7 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "color", title: "Color", screen: AnyCatalogScreen(ColorPlayground())),
         CatalogEntry(id: "image", title: "Images", screen: AnyCatalogScreen(ImagePlayground())),
         CatalogEntry(id: "graphics", title: "Graphics", screen: AnyCatalogScreen(GraphicsPlayground())),
+        CatalogEntry(id: "link", title: "Link", screen: AnyCatalogScreen(LinkPlayground())),
         CatalogEntry(id: "map", title: "Map", screen: AnyCatalogScreen(MapPlayground())),
         CatalogEntry(id: "video", title: "Video", screen: AnyCatalogScreen(VideoPlayground())),
         CatalogEntry(id: "scroll", title: "ScrollView", screen: AnyCatalogScreen(ScrollViewPlayground())),
