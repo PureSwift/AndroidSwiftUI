@@ -226,6 +226,34 @@ struct NavigationTests {
         #expect(host.callbacks.callback(for: tap) != nil)
     }
 
+    @Test("A sheet carries its detents, and none by default")
+    func sheetDetents() {
+        struct Screen: View {
+            @State var shown = true
+            var body: some View {
+                Button("Show") { shown = true }
+                    .sheet(isPresented: $shown) {
+                        Text("body").presentationDetents([.medium])
+                    }
+            }
+        }
+        let node = ViewHost(Screen()).evaluate()
+        let sheet = node.children.first { $0.type == "Sheet" }
+        #expect(sheet?.props["detents"] == .array([.string("medium")]))
+
+        // no detents declared: the interpreter reads that as a full-height sheet
+        struct Plain: View {
+            @State var shown = true
+            var body: some View {
+                Button("Show") { shown = true }
+                    .sheet(isPresented: $shown) { Text("body") }
+            }
+        }
+        let plain = ViewHost(Plain()).evaluate()
+        let plainSheet = plain.children.first { $0.type == "Sheet" }
+        #expect(plainSheet?.props["detents"] == .array([]))
+    }
+
     @Test("TabView emits tabs with their item labels and selection")
     func tabs() {
         struct Screen: View {
