@@ -64,6 +64,7 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "accessibility", title: "Accessibility", screen: AnyCatalogScreen(AccessibilityPlayground())),
         CatalogEntry(id: "state", title: "State", screen: AnyCatalogScreen(StatePlayground())),
         CatalogEntry(id: "preference", title: "Preferences", screen: AnyCatalogScreen(PreferencePlayground())),
+        CatalogEntry(id: "appstorage", title: "AppStorage", screen: AnyCatalogScreen(AppStoragePlayground())),
         CatalogEntry(id: "environment", title: "Environment", screen: AnyCatalogScreen(EnvironmentPlayground())),
         CatalogEntry(id: "observable", title: "Observable", screen: AnyCatalogScreen(ObservablePlayground())),
         CatalogEntry(id: "bindable", title: "Bindable", screen: AnyCatalogScreen(BindablePlayground())),
