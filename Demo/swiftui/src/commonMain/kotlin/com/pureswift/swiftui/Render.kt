@@ -173,6 +173,10 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.TextUnit
@@ -681,6 +685,35 @@ private fun RenderTextField(node: ViewNode) {
     val label: @Composable () -> Unit = { Text(node.string("placeholder") ?: "") }
     val transformation = if (node.bool("secure") == true) PasswordVisualTransformation() else VisualTransformation.None
 
+    // .keyboardType chooses the key layout; .submitLabel names the action key.
+    val keyboardType = when (node.modifiers.firstOrNull { it.kind == "keyboardType" }?.args?.string("type")) {
+        "numberPad", "asciiCapableNumberPad" -> KeyboardType.Number
+        "decimalPad" -> KeyboardType.Decimal
+        "phonePad", "namePhonePad" -> KeyboardType.Phone
+        "emailAddress" -> KeyboardType.Email
+        "URL" -> KeyboardType.Uri
+        else -> KeyboardType.Text
+    }
+    val imeAction = when (node.modifiers.firstOrNull { it.kind == "submitLabel" }?.args?.string("label")) {
+        "search", "webSearch" -> ImeAction.Search
+        "go", "route" -> ImeAction.Go
+        "send" -> ImeAction.Send
+        "next" -> ImeAction.Next
+        "join", "continue", "return" -> ImeAction.Done
+        else -> ImeAction.Default
+    }
+    val keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction)
+
+    // .onSubmit fires on the keyboard action key, whatever its label.
+    val onSubmit = node.modifiers.firstOrNull { it.kind == "onSubmit" }?.args?.long("action")
+    val keyboardActions = KeyboardActions(
+        onDone = { onSubmit?.let { SwiftBridge.sink.invokeVoid(it) } },
+        onGo = { onSubmit?.let { SwiftBridge.sink.invokeVoid(it) } },
+        onSend = { onSubmit?.let { SwiftBridge.sink.invokeVoid(it) } },
+        onSearch = { onSubmit?.let { SwiftBridge.sink.invokeVoid(it) } },
+        onNext = { onSubmit?.let { SwiftBridge.sink.invokeVoid(it) } },
+    )
+
     // plain drops the box outline; roundedBorder and automatic keep it
     if (LocalTextFieldStyle.current == "plain") {
         TextField(
@@ -689,6 +722,9 @@ private fun RenderTextField(node: ViewNode) {
             label = label,
             enabled = node.isEnabled(),
             visualTransformation = transformation,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            singleLine = true,
             colors = TextFieldDefaults.colors(
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
@@ -704,6 +740,9 @@ private fun RenderTextField(node: ViewNode) {
             label = label,
             enabled = node.isEnabled(),
             visualTransformation = transformation,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            singleLine = true,
             modifier = fieldModifier,
         )
     }
@@ -1572,7 +1611,7 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "transition", "focused", "longPress", "drag", "contentMode", "progressViewStyle",
     "buttonStyle", "pickerStyle", "toggleStyle", "textFieldStyle",
     "accessibilityLabel", "accessibilityValue", "accessibilityHidden",
-    "accessibilityAddTraits", "accessibilityIdentifier", "labelStyle",
+    "accessibilityAddTraits", "accessibilityIdentifier", "keyboardType", "submitLabel", "onSubmit", "labelStyle",
 )
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded

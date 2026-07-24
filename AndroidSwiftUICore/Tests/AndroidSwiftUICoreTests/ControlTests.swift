@@ -195,6 +195,40 @@ struct ControlTests {
         #expect(field.modifiers.first { $0.kind == "textFieldStyle" }?.args["style"] == .string("plain"))
     }
 
+    @Test("Keyboard type and submit label emit their spelling")
+    func keyboardConfig() {
+        struct Screen: View {
+            @State var text = ""
+            var body: some View {
+                TextField("Amount", text: $text)
+                    .keyboardType(.decimalPad)
+                    .submitLabel(.search)
+            }
+        }
+        let node = ViewHost(Screen()).evaluate()
+        #expect(node.modifiers.first { $0.kind == "keyboardType" }?.args["type"] == .string("decimalPad"))
+        #expect(node.modifiers.first { $0.kind == "submitLabel" }?.args["label"] == .string("search"))
+    }
+
+    @Test("onSubmit registers a callback the field can fire")
+    func onSubmit() {
+        var submitted = false
+        struct Screen: View {
+            let onSubmit: () -> Void
+            @State var text = ""
+            var body: some View {
+                TextField("Search", text: $text).onSubmit(perform: onSubmit)
+            }
+        }
+        let host = ViewHost(Screen(onSubmit: { submitted = true }))
+        let node = host.evaluate()
+        guard case .int(let id)? = node.modifiers.first(where: { $0.kind == "onSubmit" })?.args["action"] else {
+            Issue.record("missing onSubmit callback"); return
+        }
+        host.callbacks.invokeVoid(Int64(id))
+        #expect(submitted)
+    }
+
     @Test("Picker emits tagged children and maps the selection string back")
     func picker() {
         struct Screen: View {
