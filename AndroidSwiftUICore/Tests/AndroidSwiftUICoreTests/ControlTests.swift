@@ -376,3 +376,87 @@ private func focusCallback(_ node: RenderNode) -> Int64? {
           case .int(let id)? = mod.args["onChange"] else { return nil }
     return Int64(id)
 }
+
+@Suite("AppStorage")
+struct AppStorageTests {
+
+    @Test("A stored value survives a fresh wrapper, as it would a relaunch")
+    func persistsAcrossWrappers() {
+        AppStorageStore.backend = InMemoryAppStorage()
+        // first "launch": default, then the user changes it
+        struct First: View {
+            @AppStorage("volume") var volume = 5
+            var body: some View { Text("\(volume)") }
+        }
+        let first = First()
+        #expect(first.volume == 5)
+        first.volume = 9
+
+        // a fresh wrapper reads what was written, not the default
+        struct Second: View {
+            @AppStorage("volume") var volume = 5
+            var body: some View { Text("\(volume)") }
+        }
+        #expect(Second().volume == 9)
+    }
+
+    @Test("Each supported type round-trips under its own key")
+    func supportedTypes() {
+        AppStorageStore.backend = InMemoryAppStorage()
+        struct Screen: View {
+            @AppStorage("on") var on = false
+            @AppStorage("count") var count = 0
+            @AppStorage("ratio") var ratio = 0.0
+            @AppStorage("name") var name = ""
+            var body: some View { Text(name) }
+        }
+        let screen = Screen()
+        screen.on = true
+        screen.count = 42
+        screen.ratio = 0.75
+        screen.name = "Coleman"
+        #expect(AppStorageStore.read("on", as: Bool.self) == true)
+        #expect(AppStorageStore.read("count", as: Int.self) == 42)
+        #expect(AppStorageStore.read("ratio", as: Double.self) == 0.75)
+        #expect(AppStorageStore.read("name", as: String.self) == "Coleman")
+        // keys stay independent
+        #expect(Screen().count == 42)
+        #expect(Screen().name == "Coleman")
+    }
+
+    @Test("The projected binding writes through to the store")
+    func bindingWritesThrough() {
+        AppStorageStore.backend = InMemoryAppStorage()
+        struct Screen: View {
+            @AppStorage("nickname") var nickname = ""
+            var body: some View { TextField("Name", text: $nickname) }
+        }
+        let host = ViewHost(Screen())
+        let node = host.evaluate()
+        guard case .int(let id)? = node.props["onChange"] else {
+            Issue.record("missing field callback"); return
+        }
+        host.callbacks.invokeString(Int64(id), "typed in")
+        #expect(AppStorageStore.read("nickname", as: String.self) == "typed in")
+    }
+
+    @Test("A file-backed store reloads what a previous instance wrote")
+    func fileBackedRoundTrip() throws {
+        let directory = NSTemporaryDirectory() + "appstorage-test-\(UInt32.random(in: 0..<100_000))"
+        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: directory) }
+
+        let first = FileAppStorage(directory: directory)
+        first.set(7, forKey: "launches")
+        first.set("dark", forKey: "theme")
+
+        // a second instance is what the next launch sees
+        let second = FileAppStorage(directory: directory)
+        #expect(second.value(forKey: "launches") as? Int == 7)
+        #expect(second.value(forKey: "theme") as? String == "dark")
+
+        // and removal sticks
+        second.set(nil, forKey: "theme")
+        #expect(FileAppStorage(directory: directory).value(forKey: "theme") == nil)
+    }
+}
