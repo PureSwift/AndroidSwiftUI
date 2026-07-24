@@ -586,3 +586,154 @@ struct GeometryTests {
         #expect(store.size.width == 180)
     }
 }
+
+private struct MaxWidthKey: PreferenceKey {
+    static var defaultValue: Double { 0 }
+    static func reduce(value: inout Double, nextValue: () -> Double) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct NamesKey: PreferenceKey {
+    static var defaultValue: [String] { [] }
+    static func reduce(value: inout [String], nextValue: () -> [String]) {
+        value += nextValue()
+    }
+}
+
+@Suite("Preferences")
+struct PreferenceTests {
+
+    @Test("An ancestor sees its subtree's preferences reduced")
+    func reducesAcrossSubtree() {
+        var seen: Double?
+        let host = ViewHost(
+            VStack {
+                Text("a").preference(key: MaxWidthKey.self, value: 40)
+                Text("b").preference(key: MaxWidthKey.self, value: 120)
+                Text("c").preference(key: MaxWidthKey.self, value: 80)
+            }
+            .onPreferenceChange(MaxWidthKey.self) { seen = $0 }
+        )
+        _ = host.evaluate()
+        #expect(seen == 120)          // reduce kept the largest
+    }
+
+    @Test("Reduce runs in tree order and starts from the default")
+    func reducesInOrder() {
+        var seen: [String]?
+        let host = ViewHost(
+            VStack {
+                Text("x").preference(key: NamesKey.self, value: ["first"])
+                Text("y").preference(key: NamesKey.self, value: ["second"])
+            }
+            .onPreferenceChange(NamesKey.self) { seen = $0 }
+        )
+        _ = host.evaluate()
+        #expect(seen == ["first", "second"])
+    }
+
+    @Test("A subtree that publishes nothing delivers the default")
+    func deliversDefault() {
+        var seen: Double = -1
+        let host = ViewHost(
+            VStack { Text("nothing here") }
+                .onPreferenceChange(MaxWidthKey.self) { seen = $0 }
+        )
+        _ = host.evaluate()
+        #expect(seen == 0)
+    }
+
+    @Test("An unchanged reduction doesn't fire the callback again")
+    func settlesWhenUnchanged() {
+        // The callback normally writes state, so re-delivering an unchanged
+        // value would re-evaluate forever.
+        final class Counter: @unchecked Sendable { var count = 0 }
+        let counter = Counter()
+        struct Screen: View {
+            let counter: Counter
+            @State var bump = 0
+            var body: some View {
+                VStack {
+                    Text("\(bump)").preference(key: MaxWidthKey.self, value: 50)
+                }
+                .onPreferenceChange(MaxWidthKey.self) { _ in counter.count += 1 }
+            }
+        }
+        let host = ViewHost(Screen(counter: counter))
+        _ = host.evaluate()
+        #expect(counter.count == 1)
+        _ = host.evaluate()
+        _ = host.evaluate()
+        #expect(counter.count == 1)   // same value across passes — delivered once
+    }
+
+    @Test("Chained observers watching different keys each get their own")
+    func chainedObserversDifferentKeys() {
+        // An observer scopes a collector to its subtree. If it only forwarded
+        // the key it watches, the outer observer here would see nothing —
+        // which is exactly what happened before propagate(into:).
+        var widest: Double?
+        var collected: [String]?
+        let host = ViewHost(
+            VStack {
+                Text("a").preference(key: MaxWidthKey.self, value: 30)
+                    .preference(key: NamesKey.self, value: ["a"])
+                Text("b").preference(key: MaxWidthKey.self, value: 90)
+                    .preference(key: NamesKey.self, value: ["b"])
+            }
+            .onPreferenceChange(MaxWidthKey.self) { widest = $0 }
+            .onPreferenceChange(NamesKey.self) { collected = $0 }
+        )
+        _ = host.evaluate()
+        #expect(widest == 90)
+        #expect(collected == ["a", "b"])
+    }
+
+    @Test("Chained observers settle instead of re-evaluating forever")
+    func chainedObserversSettle() {
+        // Chained observers share an identity path. If their change-memos also
+        // shared a storage key they would overwrite each other every pass, so
+        // every delivery would look new and the callbacks — which write state —
+        // would re-evaluate without end. This hung the app on device.
+        final class Counter: @unchecked Sendable {
+            var widest = 0
+            var names = 0
+        }
+        let counter = Counter()
+        struct Screen: View {
+            let counter: Counter
+            var body: some View {
+                VStack {
+                    Text("a").preference(key: MaxWidthKey.self, value: 30)
+                        .preference(key: NamesKey.self, value: ["a"])
+                }
+                .onPreferenceChange(MaxWidthKey.self) { _ in counter.widest += 1 }
+                .onPreferenceChange(NamesKey.self) { _ in counter.names += 1 }
+            }
+        }
+        let host = ViewHost(Screen(counter: counter))
+        for _ in 0 ..< 5 { _ = host.evaluate() }
+        #expect(counter.widest == 1)   // delivered once, then quiet
+        #expect(counter.names == 1)
+    }
+
+    @Test("A nested observer consumes its subtree yet still publishes upward")
+    func nestedObserversCompose() {
+        var inner: Double?
+        var outer: Double?
+        let host = ViewHost(
+            VStack {
+                VStack {
+                    Text("deep").preference(key: MaxWidthKey.self, value: 70)
+                }
+                .onPreferenceChange(MaxWidthKey.self) { inner = $0 }
+                Text("shallow").preference(key: MaxWidthKey.self, value: 30)
+            }
+            .onPreferenceChange(MaxWidthKey.self) { outer = $0 }
+        )
+        _ = host.evaluate()
+        #expect(inner == 70)
+        #expect(outer == 70)          // the inner reduction reached the outer one
+    }
+}

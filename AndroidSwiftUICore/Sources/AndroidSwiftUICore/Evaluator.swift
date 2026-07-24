@@ -19,6 +19,8 @@ public struct ResolveContext {
     public var titleSink: TitleSink?
     /// Carries a `refreshable` action to the List it wraps.
     public var refreshSink: RefreshSink?
+    /// Collects preferences published by the subtree currently being resolved.
+    public var preferences: PreferenceCollector?
     public var path: String
     public var depth: Int
 
@@ -28,6 +30,7 @@ public struct ResolveContext {
         environment: EnvironmentStorage = EnvironmentStorage(),
         titleSink: TitleSink? = nil,
         refreshSink: RefreshSink? = nil,
+        preferences: PreferenceCollector? = nil,
         path: String = "",
         depth: Int = 0
     ) {
@@ -36,6 +39,7 @@ public struct ResolveContext {
         self.environment = environment
         self.titleSink = titleSink
         self.refreshSink = refreshSink
+        self.preferences = preferences
         self.path = path
         self.depth = depth
     }
