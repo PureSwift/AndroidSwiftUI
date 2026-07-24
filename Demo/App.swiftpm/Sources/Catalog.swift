@@ -61,6 +61,7 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "tab", title: "TabView", screen: AnyCatalogScreen(TabViewPlayground())),
         CatalogEntry(id: "sheet", title: "Sheet", screen: AnyCatalogScreen(SheetPlayground())),
         CatalogEntry(id: "alert", title: "Alert", screen: AnyCatalogScreen(AlertPlayground())),
+        CatalogEntry(id: "accessibility", title: "Accessibility", screen: AnyCatalogScreen(AccessibilityPlayground())),
         CatalogEntry(id: "state", title: "State", screen: AnyCatalogScreen(StatePlayground())),
         CatalogEntry(id: "preference", title: "Preferences", screen: AnyCatalogScreen(PreferencePlayground())),
         CatalogEntry(id: "environment", title: "Environment", screen: AnyCatalogScreen(EnvironmentPlayground())),

@@ -737,3 +737,60 @@ struct PreferenceTests {
         #expect(outer == 70)          // the inner reduction reached the outer one
     }
 }
+
+@Suite("Accessibility")
+struct AccessibilityTests {
+
+    private func arg(_ node: RenderNode, _ kind: String, _ key: String) -> PropValue? {
+        node.modifiers.first { $0.kind == kind }?.args[key]
+    }
+
+    @Test("Label, value, and identifier emit their text")
+    func describes() {
+        let node = ViewHost(
+            Text("7")
+                .accessibilityLabel("Unread messages")
+                .accessibilityValue("7 items")
+                .accessibilityIdentifier("inbox-count")
+        ).evaluate()
+        #expect(arg(node, "accessibilityLabel", "text") == .string("Unread messages"))
+        #expect(arg(node, "accessibilityValue", "text") == .string("7 items"))
+        #expect(arg(node, "accessibilityIdentifier", "id") == .string("inbox-count"))
+    }
+
+    @Test("Hiding is explicit in both directions")
+    func hidden() {
+        let hidden = ViewHost(Text("decorative").accessibilityHidden(true)).evaluate()
+        #expect(arg(hidden, "accessibilityHidden", "value") == .bool(true))
+        // false must still emit — it has to be able to override an inherited hide
+        let shown = ViewHost(Text("visible").accessibilityHidden(false)).evaluate()
+        #expect(arg(shown, "accessibilityHidden", "value") == .bool(false))
+    }
+
+    @Test("Traits emit as a set of names")
+    func traits() {
+        let node = ViewHost(
+            Text("Chapter").accessibilityAddTraits([.isHeader, .isButton])
+        ).evaluate()
+        guard case .array(let names)? = arg(node, "accessibilityAddTraits", "traits") else {
+            Issue.record("missing traits"); return
+        }
+        #expect(names.contains(.string("header")))
+        #expect(names.contains(.string("button")))
+        #expect(!names.contains(.string("selected")))
+    }
+
+
+    @Test("Accessibility describes without disturbing the view")
+    func nonVisual() {
+        // the node type, props, and children must be identical with and without
+        // a description — these modifiers only add semantics
+        let plain = ViewHost(VStack { Text("hello") }).evaluate()
+        let described = ViewHost(
+            VStack { Text("hello") }.accessibilityLabel("greeting")
+        ).evaluate()
+        #expect(plain.type == described.type)
+        #expect(plain.children.count == described.children.count)
+        #expect(firstTextString(plain) == firstTextString(described))
+    }
+}

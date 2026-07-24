@@ -149,6 +149,15 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.ImageBitmap
@@ -1448,6 +1457,44 @@ internal fun ViewNode.composeModifiers(): Modifier {
                 }
             }
 
+            // Accessibility folds into Compose semantics rather than changing
+            // any visual property.
+            "accessibilityLabel" -> {
+                val text = entry.args.string("text")
+                if (text == null) modifier else modifier.semantics { contentDescription = text }
+            }
+
+            "accessibilityValue" -> {
+                val text = entry.args.string("text")
+                if (text == null) modifier else modifier.semantics { stateDescription = text }
+            }
+
+            // clearAndSetSemantics drops this node AND its subtree from the
+            // tree, which is what hiding has to mean for a container.
+            "accessibilityHidden" -> {
+                val hidden = entry.args.string("value") == "true"
+                if (hidden) modifier.clearAndSetSemantics { } else modifier
+            }
+
+            "accessibilityAddTraits" -> {
+                val traits = (entry.args["traits"] as? kotlinx.serialization.json.JsonArray)
+                    ?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                    .orEmpty()
+                modifier.semantics {
+                    if (traits.contains("button")) role = Role.Button
+                    if (traits.contains("image")) role = Role.Image
+                    if (traits.contains("header")) heading()
+                    if (traits.contains("selected")) selected = true
+                }
+            }
+
+            // A test handle, never announced.
+            "accessibilityIdentifier" -> {
+                val id = entry.args.string("id")
+                if (id == null) modifier else modifier.testTag(id)
+            }
+
+
             // Dim disabled content; controls also drop interactivity via their
             // own `enabled` parameter (e.g. Button).
             "disabled" -> {
@@ -1476,6 +1523,8 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "tint", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
     "transition", "focused", "longPress", "drag", "contentMode", "progressViewStyle",
     "buttonStyle", "pickerStyle", "toggleStyle", "textFieldStyle",
+    "accessibilityLabel", "accessibilityValue", "accessibilityHidden",
+    "accessibilityAddTraits", "accessibilityIdentifier",
 )
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded
