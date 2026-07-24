@@ -50,6 +50,7 @@ public struct Image: View {
 
     internal let name: String
     internal let systemName: String?
+    internal var isResizable = false
 
     public init(_ name: String) {
         self.name = name
@@ -61,6 +62,14 @@ public struct Image: View {
         self.systemName = systemName
     }
 
+    /// Lets the image scale to fill its proposed space (pair with
+    /// `scaledToFit`/`scaledToFill`). A method on `Image` itself, as in SwiftUI.
+    public func resizable() -> Image {
+        var copy = self
+        copy.isResizable = true
+        return copy
+    }
+
     public typealias Body = Never
 }
 
@@ -68,6 +77,7 @@ extension Image: PrimitiveView {
     public func _render(in context: ResolveContext) -> RenderNode {
         var props: [String: PropValue] = ["name": .string(name)]
         if let systemName { props["systemName"] = .string(systemName) }
+        if isResizable { props["resizable"] = .bool(true) }
         return RenderNode(type: "Image", id: context.path, props: props)
     }
 }
