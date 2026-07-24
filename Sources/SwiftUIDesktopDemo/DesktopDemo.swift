@@ -7,8 +7,8 @@
 //
 
 import Foundation
-import AndroidSwiftUICore
-import AndroidSwiftUIBridge
+import SwiftUICore
+import ComposeUI
 import SwiftJava
 
 @JavaClass("com.pureswift.swiftui.desktop.SwiftRuntime")
