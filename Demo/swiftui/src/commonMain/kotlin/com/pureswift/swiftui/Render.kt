@@ -90,6 +90,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.NavigationBarItem
@@ -1719,8 +1720,25 @@ private fun RenderSheetsAndAlerts(screen: ViewNode?) {
         when (child.type) {
             "Sheet" -> {
                 val onDismiss = child.long("onDismiss")
-                ModalBottomSheet(onDismissRequest = { onDismiss?.let { SwiftBridge.sink.invokeVoid(it) } }) {
-                    child.children.firstOrNull()?.let { Render(it) }
+                // Detents were emitted but never read, so every sheet wrapped its
+                // content and a "full-size" sheet came up as a short strip.
+                val detents = child.stringArray("detents")
+                val medium = detents.contains("medium")
+                val large = detents.isEmpty() || detents.contains("large")
+                ModalBottomSheet(
+                    onDismissRequest = { onDismiss?.let { SwiftBridge.sink.invokeVoid(it) } },
+                    // with no medium detent there is no partial stop to rest at
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = !medium),
+                ) {
+                    // A Material sheet is only as tall as its content, so one that
+                    // should own the screen has to be told to fill it.
+                    val height = when {
+                        medium && !large -> Modifier.fillMaxHeight(0.5f)
+                        else -> Modifier.fillMaxHeight()
+                    }
+                    Box(modifier = height) {
+                        child.children.firstOrNull()?.let { Render(it) }
+                    }
                 }
             }
             "Alert" -> RenderAlert(child)
