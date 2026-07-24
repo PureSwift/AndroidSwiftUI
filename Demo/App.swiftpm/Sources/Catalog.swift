@@ -36,6 +36,7 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "morecontrols", title: "More Controls", screen: AnyCatalogScreen(MoreControlsPlayground())),
         CatalogEntry(id: "controlstyle", title: "Control Styles", screen: AnyCatalogScreen(ControlStylePlayground())),
         CatalogEntry(id: "stack", title: "Stacks", screen: AnyCatalogScreen(StackPlayground())),
+        CatalogEntry(id: "geometry", title: "GeometryReader", screen: AnyCatalogScreen(GeometryPlayground())),
         CatalogEntry(id: "frame", title: "Frames", screen: AnyCatalogScreen(FramePlayground())),
         CatalogEntry(id: "spacer", title: "Spacer & Divider", screen: AnyCatalogScreen(SpacerDividerPlayground())),
         CatalogEntry(id: "color", title: "Color", screen: AnyCatalogScreen(ColorPlayground())),
