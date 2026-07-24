@@ -1314,11 +1314,19 @@ private fun RenderAsyncImage(node: ViewNode) {
         Text("[image]", modifier = node.composeModifiers())
         return
     }
-    var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    // Seed from the cache synchronously: a URL already fetched renders on the
+    // first frame with no spinner. Only a miss touches the network.
+    var bitmap by remember(url) { mutableStateOf(ImageCache.get(url)) }
     var failed by remember(url) { mutableStateOf(false) }
     LaunchedEffect(url) {
+        if (bitmap != null) return@LaunchedEffect
         val loaded = loadRemoteImage(url)
-        if (loaded != null) bitmap = loaded else failed = true
+        if (loaded != null) {
+            ImageCache.put(url, loaded)
+            bitmap = loaded
+        } else {
+            failed = true
+        }
     }
     val image = bitmap
     when {
