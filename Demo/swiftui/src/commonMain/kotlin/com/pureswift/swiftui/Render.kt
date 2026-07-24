@@ -158,6 +158,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.ImageBitmap
@@ -341,6 +342,8 @@ private fun RenderResolved(node: ViewNode) {
                     }
                 }
             }
+
+            "Link" -> RenderLink(node)
 
             "GeometryReader" -> RenderGeometryReader(node)
 
@@ -574,6 +577,27 @@ private fun RenderGeometryReader(node: ViewNode) {
             onSize?.let { SwiftBridge.sink.invokeString(it, "$width,$height") }
         }
         RenderChildren(node)
+    }
+}
+
+// Handing the address to the platform's UriHandler keeps the whole hop out of
+// Swift — no callback, no bridge entry. The label takes the accent colour so it
+// reads as a link, unless something upstream already tinted it.
+@Composable
+private fun RenderLink(node: ViewNode) {
+    val url = node.string("url")
+    val handler = LocalUriHandler.current
+    val accent = LocalTint.current ?: MaterialTheme.colorScheme.primary
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = node.composeModifiers().clickable(enabled = url != null && node.isEnabled()) {
+            // a malformed or unhandled address must not take the app down
+            url?.let { runCatching { handler.openUri(it) } }
+        },
+    ) {
+        CompositionLocalProvider(LocalInheritedColor provides accent) {
+            RenderChildren(node)
+        }
     }
 }
 
