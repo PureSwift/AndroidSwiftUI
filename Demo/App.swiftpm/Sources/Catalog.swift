@@ -62,6 +62,7 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "sheet", title: "Sheet", screen: AnyCatalogScreen(SheetPlayground())),
         CatalogEntry(id: "alert", title: "Alert", screen: AnyCatalogScreen(AlertPlayground())),
         CatalogEntry(id: "state", title: "State", screen: AnyCatalogScreen(StatePlayground())),
+        CatalogEntry(id: "preference", title: "Preferences", screen: AnyCatalogScreen(PreferencePlayground())),
         CatalogEntry(id: "environment", title: "Environment", screen: AnyCatalogScreen(EnvironmentPlayground())),
         CatalogEntry(id: "observable", title: "Observable", screen: AnyCatalogScreen(ObservablePlayground())),
         CatalogEntry(id: "bindable", title: "Bindable", screen: AnyCatalogScreen(BindablePlayground())),
