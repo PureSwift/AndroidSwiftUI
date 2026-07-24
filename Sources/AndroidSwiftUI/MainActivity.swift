@@ -25,7 +25,16 @@ extension MainActivity {
     public func onCreateSwift(_ savedInstanceState: BaseBundle?) {
         log("\(self).\(#function)")
         MainActivity.shared = self
-        
+
+        // Point @AppStorage at a file in the app's private storage before any
+        // view is built, so the first evaluation already reads saved values.
+        // The path comes through the existing Context binding — no new bridge.
+        if let directory = (self as AndroidContent.Context).getFilesDir()?.getAbsolutePath() {
+            AppStorageStore.backend = FileAppStorage(directory: directory)
+        } else {
+            log("MainActivity: no files directory; @AppStorage stays in memory")
+        }
+
         // start app
         AndroidSwiftUIMain()
 
