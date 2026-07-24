@@ -359,22 +359,7 @@ private fun RenderResolved(node: ViewNode) {
 
             "VideoPlayer" -> RenderVideoPlayer(node)
 
-            "ProgressView" -> {
-                val value = node.double("value")
-                val tint = LocalTint.current
-                if (value != null) {
-                    LinearProgressIndicator(
-                        progress = { value.toFloat() },
-                        color = tint ?: ProgressIndicatorDefaults.linearColor,
-                        modifier = node.composeModifiers().fillMaxWidth(),
-                    )
-                } else {
-                    CircularProgressIndicator(
-                        color = tint ?: ProgressIndicatorDefaults.circularColor,
-                        modifier = node.composeModifiers(),
-                    )
-                }
-            }
+            "ProgressView" -> RenderProgressView(node)
 
             "Slider" -> {
                 val onChange = node.long("onChange")
@@ -435,6 +420,50 @@ private fun RenderResolved(node: ViewNode) {
 
 // Sheets and alerts ride as hidden children; the presentation layer shows
 // them, so the normal child loop skips them.
+// Determinacy (is there a value?) and shape (progressViewStyle) are separate
+// axes; the default picks a shape from determinacy, matching the original
+// value-only behavior. A label, when present, sits beneath the indicator.
+@Composable
+private fun RenderProgressView(node: ViewNode) {
+    val value = node.double("value")
+    val tint = LocalTint.current
+    val style = node.modifiers.firstOrNull { it.kind == "progressViewStyle" }?.args?.string("style")
+    val circular = when (style) {
+        "circular" -> true
+        "linear" -> false
+        else -> value == null          // automatic
+    }
+    val label = node.children.filter { !it.isPresentation() }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = node.composeModifiers(),
+    ) {
+        when {
+            circular && value != null -> CircularProgressIndicator(
+                progress = { value.toFloat() },
+                color = tint ?: ProgressIndicatorDefaults.circularColor,
+            )
+            circular -> CircularProgressIndicator(
+                color = tint ?: ProgressIndicatorDefaults.circularColor,
+            )
+            value != null -> LinearProgressIndicator(
+                progress = { value.toFloat() },
+                color = tint ?: ProgressIndicatorDefaults.linearColor,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            else -> LinearProgressIndicator(
+                color = tint ?: ProgressIndicatorDefaults.linearColor,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (label.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            label.forEach { RenderChild(it) }
+        }
+    }
+}
+
 private fun ViewNode.isPresentation(): Boolean =
     type == "Sheet" || type == "Alert" || type == "ConfirmationDialog" || type == "ToolbarItem"
 
@@ -1285,7 +1314,7 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "scale", "opacity", "border", "shadow", "clipShape", "onTapGesture", "disabled",
     "font", "fontWeight", "italic", "foregroundColor", "lineLimit", "multilineTextAlignment",
     "tint", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
-    "transition", "focused", "longPress", "drag", "contentMode",
+    "transition", "focused", "longPress", "drag", "contentMode", "progressViewStyle",
 )
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded
