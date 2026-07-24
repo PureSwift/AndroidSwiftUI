@@ -282,6 +282,29 @@ struct ModifierTests {
         #expect(empty.props["url"] == nil)
     }
 
+    @Test("Link carries its destination and its label")
+    func link() {
+        let node = ViewHost(
+            Link("Swift.org", destination: URL(string: "https://swift.org")!)
+        ).evaluate()
+        #expect(node.type == "Link")
+        #expect(node.props["url"] == .string("https://swift.org"))
+        #expect(firstTextString(node) == "Swift.org")
+        // no callback: the interpreter opens the address itself
+        #expect(node.props["onTap"] == nil)
+    }
+
+    @Test("Link accepts an arbitrary label")
+    func linkCustomLabel() {
+        let node = ViewHost(
+            Link(destination: URL(string: "https://example.com/docs")!) {
+                HStack { Text("Read"); Text("the docs") }
+            }
+        ).evaluate()
+        #expect(node.props["url"] == .string("https://example.com/docs"))
+        #expect(node.children.first?.type == "HStack")
+    }
+
     @Test("onAppear and onDisappear emit distinct callback kinds")
     func appearDisappear() {
         let node = ViewHost(Text("x").onAppear {}.onDisappear {}).evaluate()
