@@ -520,3 +520,69 @@ struct AnimationTests {
         #expect(anim?.args["token"] == .string("3"))
     }
 }
+
+@Suite("Geometry")
+struct GeometryTests {
+
+    /// Finds a GeometryReader's size-report callback anywhere in a tree.
+    private func sizeCallback(_ node: RenderNode) -> Int64? {
+        if node.type == "GeometryReader", case .int(let id)? = node.props["onSize"] {
+            return Int64(id)
+        }
+        for child in node.children {
+            if let found = sizeCallback(child) { return found }
+        }
+        return nil
+    }
+
+    @Test("A GeometryReader resolves against zero until a size is reported")
+    func geometrySettlesOverTwoPasses() {
+        struct Screen: View {
+            var body: some View {
+                GeometryReader { geometry in
+                    Text("w=\(Int(geometry.size.width)) h=\(Int(geometry.size.height))")
+                }
+            }
+        }
+        let host = ViewHost(Screen())
+        var node = host.evaluate()
+        #expect(node.type == "GeometryReader")
+        // first pass: layout hasn't happened, so the proxy reads zero
+        #expect(firstTextString(node) == "w=0 h=0")
+
+        guard let report = sizeCallback(node) else {
+            Issue.record("missing size callback"); return
+        }
+        host.callbacks.invokeString(report, "320.0,240.0")
+        node = host.evaluate()
+        // second pass: the reported size reaches the content
+        #expect(firstTextString(node) == "w=320 h=240")
+    }
+
+    @Test("The size store re-evaluates on a change and ignores everything else")
+    func geometryStoreSettles() {
+        // Driving the store directly is the precise way to pin the settling
+        // rule: without it a steady layout would re-evaluate forever.
+        let store = GeometrySizeStore()
+        var changes = 0
+        store.onChange = { changes += 1 }
+
+        store.update(from: "100.0,50.0")
+        #expect(changes == 1)
+        #expect(store.size.width == 100)
+        #expect(store.size.height == 50)
+
+        store.update(from: "100.0,50.0")
+        #expect(changes == 1)          // same size — layout has settled
+
+        store.update(from: "180.0,50.0")
+        #expect(changes == 2)          // a real change reports again
+        #expect(store.size.width == 180)
+
+        store.update(from: "garbage")
+        store.update(from: "")
+        store.update(from: "1.0")      // too few components
+        #expect(changes == 2)          // malformed reports never re-evaluate
+        #expect(store.size.width == 180)
+    }
+}
