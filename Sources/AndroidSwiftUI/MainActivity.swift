@@ -37,32 +37,11 @@ extension MainActivity {
 
         // start app
         AndroidSwiftUIMain()
-
-        runAsync()
     }
 
     @JavaMethod
     public func onActivityResultSwift(_ requestCode: Int32, _ resultCode: Int32, _ data: AndroidContent.Intent?) {
         log("\(self).\(#function) requestCode \(requestCode) resultCode \(resultCode)")
-    }
-}
-
-private extension MainActivity {
-    
-    func runAsync() {
-        RunLoop.main.run(until: Date() + 0.1)
-        DispatchQueue.main.async {
-            Self.log("\(self).\(#function) Main Thread Async")
-        }
-        DispatchQueue.global(qos: .default).async {
-            Self.log("\(self).\(#function) Default Dispatch Queue Async")
-        }
-        Task {
-            Self.log("\(self).\(#function) Task Started")
-            await MainActor.run {
-                RunLoop.main.run(until: Date() + 0.1)
-            }
-        }
     }
 }
 

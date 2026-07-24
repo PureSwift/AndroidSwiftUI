@@ -37,8 +37,14 @@ public enum AndroidSwiftUIApp {
             assertionFailure("host view has no tree store")
             return
         }
-        // marshal re-renders onto the main looper: JNI object creation and
-        // Compose state writes must run there, not on a Swift Task's thread
+        // Re-renders post to the main looper through a JVM `Runnable`, NOT
+        // `DispatchQueue.main`. Rendering makes JNI calls (materializing the
+        // `ViewNode` tree), and JNI `FindClass` resolves against the class loader
+        // of the Java frame on the stack. A `Runnable.run()` invocation carries
+        // the app's class loader; the dispatch main-queue drain runs in a native
+        // context whose fallback boot class loader can't see the app's classes,
+        // so JNI aborts with `NoClassDefFoundError`. `AndroidMainActor`/
+        // `DispatchQueue.main` (bound at launch) remain correct for non-JNI work.
         let handler = AndroidOS.Handler(try! JavaClass<AndroidOS.Looper>().getMainLooper())
         let runtime = BridgeRuntime(root: root, store: store) { block in
             let runnable = Runnable { block() }

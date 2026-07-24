@@ -42,10 +42,13 @@ let package = Package(
         // / `DispatchQueue.main` work on Android without hand-draining a RunLoop.
         // Same identity (`swift-android-native`) as the PureSwift/Android
         // dependency; pinned to the fork/branch that package uses so the Android
-        // build's single-revision requirement is satisfied.
+        // build's single-revision requirement is satisfied. The `CoreFoundation`
+        // trait drains the dispatch main queue through `CFRunLoopRunInMode`, which
+        // is what makes `DispatchQueue.main` reliable as the render scheduler.
         .package(
             url: "https://github.com/MillerTechnologyPeru/swift-android-native.git",
-            branch: "feature/pureswift"
+            branch: "feature/pureswift",
+            traits: ["CoreFoundation"]
         ),
         .package(path: "SwiftUICore")
     ],
