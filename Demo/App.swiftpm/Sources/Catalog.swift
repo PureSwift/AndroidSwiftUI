@@ -31,6 +31,7 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "slider", title: "Slider", screen: AnyCatalogScreen(SliderPlayground())),
         CatalogEntry(id: "textfield", title: "TextField", screen: AnyCatalogScreen(TextFieldPlayground())),
         CatalogEntry(id: "focus", title: "FocusState", screen: AnyCatalogScreen(FocusPlayground())),
+        CatalogEntry(id: "forminput", title: "Form Input", screen: AnyCatalogScreen(FormInputPlayground())),
         CatalogEntry(id: "picker", title: "Picker", screen: AnyCatalogScreen(PickerPlayground())),
         CatalogEntry(id: "progress", title: "ProgressView", screen: AnyCatalogScreen(ProgressViewPlayground())),
         CatalogEntry(id: "morecontrols", title: "More Controls", screen: AnyCatalogScreen(MoreControlsPlayground())),
