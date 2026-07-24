@@ -59,6 +59,16 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -179,6 +189,13 @@ internal val LocalInheritedColor = compositionLocalOf { Color.Unspecified }
 internal val LocalInheritedDisabled = compositionLocalOf { false }
 internal val LocalTint = compositionLocalOf<Color?> { null }
 
+// Control styles inherit like the text attributes above: a style set on a
+// container applies to every matching control in its subtree.
+internal val LocalButtonStyle = compositionLocalOf { "automatic" }
+internal val LocalPickerStyle = compositionLocalOf { "automatic" }
+internal val LocalToggleStyle = compositionLocalOf { "automatic" }
+internal val LocalTextFieldStyle = compositionLocalOf { "automatic" }
+
 /// Interprets a Swift-evaluated node tree into Material 3 composables.
 ///
 /// One `when` per node type; unknown types render a diagnostic so schema
@@ -209,6 +226,10 @@ internal fun RenderChild(node: ViewNode) {
     var color = LocalInheritedColor.current
     var disabled = LocalInheritedDisabled.current
     var tint = LocalTint.current
+    var buttonStyle = LocalButtonStyle.current
+    var pickerStyle = LocalPickerStyle.current
+    var toggleStyle = LocalToggleStyle.current
+    var textFieldStyle = LocalTextFieldStyle.current
     for (m in node.modifiers) {
         when (m.kind) {
             "font" -> {
@@ -223,6 +244,10 @@ internal fun RenderChild(node: ViewNode) {
             "foregroundColor" -> m.args.long("color")?.let { color = Color(it.toInt()) }
             "disabled" -> if ((m.args["value"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true") disabled = true
             "tint" -> m.args.long("color")?.let { tint = Color(it.toInt()) }
+            "buttonStyle" -> m.args.string("style")?.let { buttonStyle = it }
+            "pickerStyle" -> m.args.string("style")?.let { pickerStyle = it }
+            "toggleStyle" -> m.args.string("style")?.let { toggleStyle = it }
+            "textFieldStyle" -> m.args.string("style")?.let { textFieldStyle = it }
         }
     }
 
@@ -233,6 +258,10 @@ internal fun RenderChild(node: ViewNode) {
         LocalInheritedColor provides color,
         LocalInheritedDisabled provides disabled,
         LocalTint provides tint,
+        LocalButtonStyle provides buttonStyle,
+        LocalPickerStyle provides pickerStyle,
+        LocalToggleStyle provides toggleStyle,
+        LocalTextFieldStyle provides textFieldStyle,
     ) { RenderResolved(node) }
 }
 
@@ -243,32 +272,9 @@ private fun RenderResolved(node: ViewNode) {
         when (node.type) {
             "Text" -> RenderText(node)
 
-            "Button" -> {
-                val onTap = node.long("onTap")
-                val tint = LocalTint.current
-                Button(
-                    onClick = { onTap?.let { SwiftBridge.sink.invokeVoid(it) } },
-                    enabled = node.isEnabled(),
-                    colors = if (tint != null) ButtonDefaults.buttonColors(containerColor = tint) else ButtonDefaults.buttonColors(),
-                    modifier = node.composeModifiers(),
-                ) {
-                    RenderChildren(node)
-                }
-            }
+            "Button" -> RenderButton(node)
 
-            "Toggle" -> {
-                val onChange = node.long("onChange")
-                val tint = LocalTint.current
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = node.composeModifiers()) {
-                    RenderChildren(node)
-                    Switch(
-                        checked = node.bool("isOn") ?: false,
-                        onCheckedChange = { onChange?.let { id -> SwiftBridge.sink.invokeBool(id, it) } },
-                        enabled = node.isEnabled(),
-                        colors = if (tint != null) SwitchDefaults.colors(checkedTrackColor = tint) else SwitchDefaults.colors(),
-                    )
-                }
-            }
+            "Toggle" -> RenderToggle(node)
 
             "VStack" -> Column(
                 verticalArrangement = node.double("spacing")
@@ -464,6 +470,82 @@ private fun RenderProgressView(node: ViewNode) {
     }
 }
 
+// The inherited style picks the button's presentation; `plain`/`borderless`
+// drop the container so only the label shows, as they do on iOS.
+@Composable
+private fun RenderButton(node: ViewNode) {
+    val onTap = node.long("onTap")
+    val tint = LocalTint.current
+    val click = { onTap?.let { SwiftBridge.sink.invokeVoid(it) }; Unit }
+    val enabled = node.isEnabled()
+    val modifier = node.composeModifiers()
+    val content: @Composable RowScope.() -> Unit = { RenderChildren(node) }
+
+    when (LocalButtonStyle.current) {
+        "plain", "borderless" -> TextButton(
+            onClick = click,
+            enabled = enabled,
+            colors = if (tint != null) ButtonDefaults.textButtonColors(contentColor = tint) else ButtonDefaults.textButtonColors(),
+            modifier = modifier,
+            content = content,
+        )
+        "bordered" -> OutlinedButton(
+            onClick = click,
+            enabled = enabled,
+            colors = if (tint != null) ButtonDefaults.outlinedButtonColors(contentColor = tint) else ButtonDefaults.outlinedButtonColors(),
+            modifier = modifier,
+            content = content,
+        )
+        // automatic and borderedProminent are both the filled button
+        else -> Button(
+            onClick = click,
+            enabled = enabled,
+            colors = if (tint != null) ButtonDefaults.buttonColors(containerColor = tint) else ButtonDefaults.buttonColors(),
+            modifier = modifier,
+            content = content,
+        )
+    }
+}
+
+// switch (default), checkbox, or a toggling button.
+@Composable
+private fun RenderToggle(node: ViewNode) {
+    val onChange = node.long("onChange")
+    val tint = LocalTint.current
+    val isOn = node.bool("isOn") ?: false
+    val enabled = node.isEnabled()
+    val set = { value: Boolean -> onChange?.let { SwiftBridge.sink.invokeBool(it, value) }; Unit }
+
+    if (LocalToggleStyle.current == "button") {
+        // a button whose selected state is the toggle's value
+        FilterChip(
+            selected = isOn,
+            onClick = { set(!isOn) },
+            enabled = enabled,
+            label = { RenderChildren(node) },
+            modifier = node.composeModifiers(),
+        )
+        return
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = node.composeModifiers()) {
+        RenderChildren(node)
+        when (LocalToggleStyle.current) {
+            "checkbox" -> Checkbox(
+                checked = isOn,
+                onCheckedChange = { set(it) },
+                enabled = enabled,
+                colors = if (tint != null) CheckboxDefaults.colors(checkedColor = tint) else CheckboxDefaults.colors(),
+            )
+            else -> Switch(
+                checked = isOn,
+                onCheckedChange = { set(it) },
+                enabled = enabled,
+                colors = if (tint != null) SwitchDefaults.colors(checkedTrackColor = tint) else SwitchDefaults.colors(),
+            )
+        }
+    }
+}
+
 private fun ViewNode.isPresentation(): Boolean =
     type == "Sheet" || type == "Alert" || type == "ConfirmationDialog" || type == "ToolbarItem"
 
@@ -510,20 +592,42 @@ private fun RenderTextField(node: ViewNode) {
             }
     }
 
-    OutlinedTextField(
-        value = local,
-        onValueChange = { v ->
-            local = v
-            if (v.text != lastSent) {
-                lastSent = v.text
-                onChange?.let { SwiftBridge.sink.invokeString(it, v.text) }
-            }
-        },
-        label = { Text(node.string("placeholder") ?: "") },
-        enabled = node.isEnabled(),
-        visualTransformation = if (node.bool("secure") == true) PasswordVisualTransformation() else VisualTransformation.None,
-        modifier = fieldModifier,
-    )
+    val change: (TextFieldValue) -> Unit = { v ->
+        local = v
+        if (v.text != lastSent) {
+            lastSent = v.text
+            onChange?.let { SwiftBridge.sink.invokeString(it, v.text) }
+        }
+    }
+    val label: @Composable () -> Unit = { Text(node.string("placeholder") ?: "") }
+    val transformation = if (node.bool("secure") == true) PasswordVisualTransformation() else VisualTransformation.None
+
+    // plain drops the box outline; roundedBorder and automatic keep it
+    if (LocalTextFieldStyle.current == "plain") {
+        TextField(
+            value = local,
+            onValueChange = change,
+            label = label,
+            enabled = node.isEnabled(),
+            visualTransformation = transformation,
+            colors = TextFieldDefaults.colors(
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+            modifier = fieldModifier,
+        )
+    } else {
+        OutlinedTextField(
+            value = local,
+            onValueChange = change,
+            label = label,
+            enabled = node.isEnabled(),
+            visualTransformation = transformation,
+            modifier = fieldModifier,
+        )
+    }
 
     if (focus != null) {
         LaunchedEffect(shouldFocus) {
@@ -667,16 +771,50 @@ private fun RenderPicker(node: ViewNode) {
         if (tag != null) tag to text else null
     }
     val currentLabel = options.firstOrNull { it.first == selection }?.second ?: (selection ?: "")
-    Row(modifier = node.composeModifiers().fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(node.string("title") ?: "")
-        Spacer(modifier = Modifier.weight(1f))
-        TextButton(onClick = { expanded = true }, enabled = node.isEnabled()) { Text(currentLabel) }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+    val enabled = node.isEnabled()
+    val select = { value: String -> onChange?.let { SwiftBridge.sink.invokeString(it, value) }; Unit }
+    val title = node.string("title") ?: ""
+
+    when (LocalPickerStyle.current) {
+        // a segmented control: every option visible at once
+        "segmented" -> Column(modifier = node.composeModifiers().fillMaxWidth()) {
+            if (title.isNotEmpty()) Text(title)
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                options.forEachIndexed { index, (value, label) ->
+                    SegmentedButton(
+                        selected = value == selection,
+                        onClick = { select(value) },
+                        enabled = enabled,
+                        shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                    ) { Text(label) }
+                }
+            }
+        }
+        // inline: the options laid out in place as a selectable list
+        "inline" -> Column(modifier = node.composeModifiers().fillMaxWidth()) {
+            if (title.isNotEmpty()) Text(title)
             for ((value, label) in options) {
-                DropdownMenuItem(text = { Text(label) }, onClick = {
-                    expanded = false
-                    onChange?.let { SwiftBridge.sink.invokeString(it, value) }
-                })
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().clickable(enabled = enabled) { select(value) },
+                ) {
+                    RadioButton(selected = value == selection, onClick = { select(value) }, enabled = enabled)
+                    Text(label)
+                }
+            }
+        }
+        // automatic and menu: the label opens a dropdown
+        else -> Row(modifier = node.composeModifiers().fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(title)
+            Spacer(modifier = Modifier.weight(1f))
+            TextButton(onClick = { expanded = true }, enabled = enabled) { Text(currentLabel) }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                for ((value, label) in options) {
+                    DropdownMenuItem(text = { Text(label) }, onClick = {
+                        expanded = false
+                        select(value)
+                    })
+                }
             }
         }
     }
@@ -1315,6 +1453,7 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "font", "fontWeight", "italic", "foregroundColor", "lineLimit", "multilineTextAlignment",
     "tint", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
     "transition", "focused", "longPress", "drag", "contentMode", "progressViewStyle",
+    "buttonStyle", "pickerStyle", "toggleStyle", "textFieldStyle",
 )
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded
