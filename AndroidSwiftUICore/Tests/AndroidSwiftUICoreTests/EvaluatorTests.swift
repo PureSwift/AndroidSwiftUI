@@ -854,3 +854,55 @@ struct AccessibilityTests {
         #expect(firstTextString(plain) == firstTextString(described))
     }
 }
+
+@Suite("DisclosureGroup")
+struct DisclosureGroupTests {
+
+    @Test("Emits its label then its content, marking the boundary")
+    func labelThenContent() {
+        let node = ViewHost(
+            DisclosureGroup("Advanced") {
+                Text("row one")
+                Text("row two")
+            }
+        ).evaluate()
+        #expect(node.type == "DisclosureGroup")
+        #expect(node.props["labelCount"] == .int(1))
+        #expect(node.children.count == 3)           // 1 label + 2 content
+        #expect(firstTextString(node.children[0]) == "Advanced")
+        #expect(firstTextString(node.children[1]) == "row one")
+        // unbound: the interpreter owns expansion, so no state crosses
+        #expect(node.props["isExpanded"] == nil)
+        #expect(node.props["onToggle"] == nil)
+    }
+
+    @Test("A bound group round-trips its expansion")
+    func boundExpansion() {
+        struct Screen: View {
+            @State var open = false
+            var body: some View {
+                DisclosureGroup("Details", isExpanded: $open) { Text("hidden") }
+            }
+        }
+        let host = ViewHost(Screen())
+        var node = host.evaluate()
+        #expect(node.props["isExpanded"] == .bool(false))
+        guard case .int(let id)? = node.props["onToggle"] else {
+            Issue.record("missing toggle callback"); return
+        }
+        host.callbacks.invokeBool(Int64(id), true)
+        node = host.evaluate()
+        #expect(node.props["isExpanded"] == .bool(true))
+    }
+
+    @Test("Accepts a view label, not only a title")
+    func viewLabel() {
+        let node = ViewHost(
+            DisclosureGroup(content: { Text("body") }, label: {
+                Label("Section", systemImage: "star")
+            })
+        ).evaluate()
+        #expect(node.props["labelCount"] == .int(1))
+        #expect(node.children[0].type == "Label")
+    }
+}
