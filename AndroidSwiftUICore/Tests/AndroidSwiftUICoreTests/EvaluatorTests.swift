@@ -342,6 +342,32 @@ struct ModifierTests {
         }
     }
 
+    @Test("contextMenu wraps content and carries its menu items")
+    func contextMenu() {
+        var deleted = false
+        let host = ViewHost(
+            Text("Long press me")
+                .contextMenu {
+                    Button("Rename") {}
+                    Button("Delete") { deleted = true }
+                }
+        )
+        let node = host.evaluate()
+        #expect(node.type == "ContextMenu")
+        #expect(node.props["contentCount"] == .int(1))
+        // 1 content + 2 menu items
+        #expect(node.children.count == 3)
+        #expect(firstTextString(node.children[0]) == "Long press me")
+
+        // the menu item's callback still reaches the closure
+        let deleteItem = node.children[2]
+        guard case .int(let id)? = deleteItem.props["onTap"] else {
+            Issue.record("menu item lost its callback"); return
+        }
+        host.callbacks.invokeVoid(Int64(id))
+        #expect(deleted)
+    }
+
     @Test("onAppear and onDisappear emit distinct callback kinds")
     func appearDisappear() {
         let node = ViewHost(Text("x").onAppear {}.onDisappear {}).evaluate()
