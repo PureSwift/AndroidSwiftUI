@@ -161,6 +161,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.ImageBitmap
@@ -415,6 +417,8 @@ private fun RenderResolved(node: ViewNode) {
             "TextField" -> RenderTextField(node)
 
             "Stepper" -> RenderStepper(node)
+
+            "Popover" -> RenderPopover(node)
 
             "ContextMenu" -> RenderContextMenu(node)
 
@@ -894,6 +898,40 @@ private fun formatDateMillis(millis: Long): String {
     val format = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM)
     format.timeZone = java.util.TimeZone.getTimeZone("UTC")
     return format.format(java.util.Date(millis))
+}
+
+// Anchors a floating bubble to its content while presented. children are
+// [anchor..., body...]; anchorCount splits them. Dismissing off the bubble
+// writes the bound flag back through onDismiss.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenderPopover(node: ViewNode) {
+    val anchorCount = node.long("anchorCount")?.toInt() ?: 0
+    val presented = node.string("isPresented") == "true"
+    val onDismiss = node.long("onDismiss")
+    Box {
+        Column(modifier = node.composeModifiers()) {
+            node.children.take(anchorCount).forEach { RenderChild(it) }
+        }
+        if (presented) {
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, 24),
+                onDismissRequest = { onDismiss?.let { SwiftBridge.sink.invokeVoid(it) } },
+                properties = PopupProperties(focusable = true),
+            ) {
+                Surface(
+                    shadowElevation = 8.dp,
+                    tonalElevation = 2.dp,
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        node.children.drop(anchorCount).forEach { RenderChild(it) }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // Long-press the content to reveal a dropdown of the menu items. children are
