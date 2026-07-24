@@ -38,6 +38,15 @@ let package = Package(
             url: "https://github.com/swiftlang/swift-java.git",
             branch: "main"
         ),
+        // A Swift global actor backed by the Android main looper, so `@MainActor`
+        // / `DispatchQueue.main` work on Android without hand-draining a RunLoop.
+        // Same identity (`swift-android-native`) as the PureSwift/Android
+        // dependency; pinned to the fork/branch that package uses so the Android
+        // build's single-revision requirement is satisfied.
+        .package(
+            url: "https://github.com/MillerTechnologyPeru/swift-android-native.git",
+            branch: "feature/pureswift"
+        ),
         .package(path: "SwiftUICore")
     ],
     targets: [
@@ -54,6 +63,11 @@ let package = Package(
                 .product(
                     name: "AndroidKit",
                     package: "Android"
+                ),
+                .product(
+                    name: "AndroidLooper",
+                    package: "swift-android-native",
+                    condition: .when(platforms: [.android])
                 )
             ],
             swiftSettings: [
