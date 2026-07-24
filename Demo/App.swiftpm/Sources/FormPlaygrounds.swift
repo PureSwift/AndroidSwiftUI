@@ -1,5 +1,7 @@
 #if canImport(AndroidSwiftUI)
 import AndroidSwiftUI
+#elseif canImport(ComposeUI)
+import SwiftUICore
 #else
 import SwiftUI
 #endif

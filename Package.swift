@@ -10,13 +10,16 @@ let package = Package(
         .macOS(.v15)
     ],
     products: [
+        // The umbrella app code imports: the SwiftUI API and Compose bridge,
+        // re-exported, plus the Android host (android.view bridging).
         .library(
             name: "AndroidSwiftUI",
             targets: ["AndroidSwiftUI"]
         ),
+        // The platform-neutral JNI bridge to the Compose interpreter, on its own.
         .library(
-            name: "AndroidSwiftUIBridge",
-            targets: ["AndroidSwiftUIBridge"]
+            name: "ComposeUI",
+            targets: ["ComposeUI"]
         ),
         // Desktop test-rig dylib: the bridge plus a demo root view, loaded by
         // the Compose Desktop rig on the host JVM.
@@ -35,16 +38,18 @@ let package = Package(
             url: "https://github.com/swiftlang/swift-java.git",
             branch: "main"
         ),
-        .package(path: "AndroidSwiftUICore")
+        .package(path: "SwiftUICore")
     ],
     targets: [
+        // The Android umbrella: re-exports SwiftUICore + ComposeUI and adds the
+        // android.view bridging (MainActivity, Application, host view).
         .target(
             name: "AndroidSwiftUI",
             dependencies: [
-                "AndroidSwiftUIBridge",
+                "ComposeUI",
                 .product(
-                    name: "AndroidSwiftUICore",
-                    package: "AndroidSwiftUICore"
+                    name: "SwiftUICore",
+                    package: "SwiftUICore"
                 ),
                 .product(
                     name: "AndroidKit",
@@ -59,9 +64,9 @@ let package = Package(
         // Platform-neutral: no android.* imports, so it builds for the desktop
         // JVM (macOS dylib) and cross-compiles for Android identically.
         .target(
-            name: "AndroidSwiftUIBridge",
+            name: "ComposeUI",
             dependencies: [
-                .product(name: "AndroidSwiftUICore", package: "AndroidSwiftUICore"),
+                .product(name: "SwiftUICore", package: "SwiftUICore"),
                 .product(name: "SwiftJava", package: "swift-java")
             ],
             swiftSettings: [
@@ -71,8 +76,20 @@ let package = Package(
         .target(
             name: "SwiftUIDesktopDemo",
             dependencies: [
-                "AndroidSwiftUIBridge",
-                .product(name: "AndroidSwiftUICore", package: "AndroidSwiftUICore")
+                "ComposeUI",
+                .product(name: "SwiftUICore", package: "SwiftUICore")
+            ],
+            // `Playgrounds` symlinks the Android demo's shared sources; the rig
+            // reuses them verbatim on desktop. Excluded: the app entry point (it
+            // needs the Android host or Apple's App/Scene), and the three
+            // Android-only screens — Map (schematic), Video (Media3), and Custom
+            // Views (the native-view composable registry) — which have no desktop
+            // rendering. Their catalog entries are `#if canImport(AndroidSwiftUI)`.
+            exclude: [
+                "Playgrounds/App.swift",
+                "Playgrounds/MapPlaygrounds.swift",
+                "Playgrounds/VideoPlaygrounds.swift",
+                "Playgrounds/RepresentablePlaygrounds.swift",
             ],
             swiftSettings: [
               .swiftLanguageMode(.v5)

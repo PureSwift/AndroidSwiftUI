@@ -10,7 +10,7 @@ kotlin {
     jvm()
     sourceSets {
         jvmMain.dependencies {
-            implementation(project(":swiftui"))
+            implementation(project(":composeui"))
             implementation(compose.desktop.currentOs)
             implementation(compose.material3)
         }
@@ -23,7 +23,7 @@ kotlin {
 
 // Absolute path to the Swift-built dylib; the loader loads its sibling
 // libSwiftJava.dylib first (JNI_OnLoad lives there).
-val swiftLibrary = rootDir.resolve("../.build/arm64-apple-macosx/debug/libSwiftUIDesktopDemo.dylib").canonicalPath
+val swiftLibrary = rootDir.resolve(".build/arm64-apple-macosx/debug/libSwiftUIDesktopDemo.dylib").canonicalPath
 
 tasks.withType<Test>().configureEach {
     systemProperty("swiftui.library", swiftLibrary)

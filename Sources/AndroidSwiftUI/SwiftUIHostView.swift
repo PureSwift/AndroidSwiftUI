@@ -7,8 +7,8 @@
 
 import AndroidKit
 import JavaLang
-import AndroidSwiftUIBridge
-import AndroidSwiftUICore
+import ComposeUI
+import SwiftUICore
 
 /// Binding for the Kotlin Compose host view.
 @JavaClass("com.pureswift.swiftui.SwiftUIHostView")
@@ -18,7 +18,7 @@ open class SwiftUIHostView: AndroidView.View {
     @_nonoverride public convenience init(_ context: AndroidContent.Context?, environment: JNIEnvironment? = nil)
 
     @JavaMethod
-    open func getStore() -> AndroidSwiftUIBridge.TreeStore?
+    open func getStore() -> ComposeUI.TreeStore?
 }
 
 /// Launches a SwiftUI root view as the activity's content.
@@ -27,7 +27,7 @@ public enum AndroidSwiftUIApp {
     // retains the runtime for the activity's lifetime
     private static var runtime: BridgeRuntime?
 
-    public static func run(_ root: any AndroidSwiftUICore.View) {
+    public static func run(_ root: any SwiftUICore.View) {
         guard let activity = MainActivity.shared else {
             assertionFailure("MainActivity not created yet")
             return
