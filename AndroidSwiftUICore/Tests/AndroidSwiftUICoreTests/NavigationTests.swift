@@ -254,6 +254,39 @@ struct NavigationTests {
         #expect(plainSheet?.props["detents"] == .array([]))
     }
 
+    @Test("A popover shows its body only while presented, and a tap dismisses it")
+    func popover() {
+        struct Screen: View {
+            @State var shown = false
+            var body: some View {
+                Button("Show") { shown = true }
+                    .popover(isPresented: $shown) { Text("Popover body") }
+            }
+        }
+        let host = ViewHost(Screen())
+        var node = host.evaluate()
+        #expect(node.type == "Popover")
+        #expect(node.props["isPresented"] == .bool(false))
+        #expect(node.props["anchorCount"] == .int(1))
+        // collapsed: only the anchor is present, no body resolved
+        #expect(node.children.count == 1)
+
+        host.callbacks.invokeVoid(findOnTap(node)!)
+        node = host.evaluate()
+        #expect(node.props["isPresented"] == .bool(true))
+        #expect(node.children.count == 2)                 // anchor + body
+        #expect(firstTextString(node.children[1]) == "Popover body")
+
+        // an outside tap dismisses through the callback
+        guard case .int(let dismiss)? = node.props["onDismiss"] else {
+            Issue.record("missing dismiss callback"); return
+        }
+        host.callbacks.invokeVoid(Int64(dismiss))
+        node = host.evaluate()
+        #expect(node.props["isPresented"] == .bool(false))
+        #expect(node.children.count == 1)
+    }
+
     @Test("TabView emits tabs with their item labels and selection")
     func tabs() {
         struct Screen: View {
