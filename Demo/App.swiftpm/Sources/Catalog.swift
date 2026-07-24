@@ -51,6 +51,7 @@ struct CatalogEntry: Identifiable {
         CatalogEntry(id: "list", title: "List", screen: AnyCatalogScreen(ListPlayground())),
         CatalogEntry(id: "lazystack", title: "Lazy Stacks", screen: AnyCatalogScreen(LazyStackPlayground())),
         CatalogEntry(id: "grid", title: "Grid", screen: AnyCatalogScreen(GridPlayground())),
+        CatalogEntry(id: "disclosure", title: "DisclosureGroup", screen: AnyCatalogScreen(DisclosurePlayground())),
         CatalogEntry(id: "form", title: "Form", screen: AnyCatalogScreen(FormPlayground())),
         CatalogEntry(id: "modifier", title: "Modifiers", screen: AnyCatalogScreen(ModifierPlayground())),
         CatalogEntry(id: "representable", title: "Custom Views", screen: AnyCatalogScreen(RepresentablePlayground())),

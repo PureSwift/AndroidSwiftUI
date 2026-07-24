@@ -103,6 +103,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -350,6 +352,8 @@ private fun RenderResolved(node: ViewNode) {
                     }
                 }
             }
+
+            "DisclosureGroup" -> RenderDisclosureGroup(node)
 
             "Label" -> RenderLabel(node)
 
@@ -626,6 +630,42 @@ private fun RenderLabel(node: ViewNode) {
     ) {
         if (showIcon) icon?.let { RenderChild(it) }
         if (showTitle) title?.let { RenderChild(it) }
+    }
+}
+
+// A tappable header (label + chevron) over collapsible content. Expansion is
+// interpreter-local unless a binding is present, in which case the tap
+// round-trips through Swift like any other control.
+@Composable
+private fun RenderDisclosureGroup(node: ViewNode) {
+    val labelCount = node.long("labelCount")?.toInt() ?: 0
+    val onToggle = node.long("onToggle")
+    val bound = node.props.containsKey("isExpanded")
+
+    var localExpanded by remember(node.id) { mutableStateOf(false) }
+    val expanded = if (bound) node.string("isExpanded") == "true" else localExpanded
+
+    Column(modifier = node.composeModifiers().fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().clickable {
+                if (bound) onToggle?.let { SwiftBridge.sink.invokeBool(it, !expanded) }
+                else localExpanded = !localExpanded
+            }.padding(vertical = 6.dp),
+        ) {
+            Row(modifier = Modifier.weight(1f)) {
+                node.children.take(labelCount).forEach { RenderChild(it) }
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+            )
+        }
+        if (expanded) {
+            Column(modifier = Modifier.fillMaxWidth().padding(start = 12.dp)) {
+                node.children.drop(labelCount).forEach { RenderChild(it) }
+            }
+        }
     }
 }
 
