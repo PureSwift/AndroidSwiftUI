@@ -1,7 +1,7 @@
 # AndroidSwiftUI
 SwiftUI for Android
 
-![2025-06-09 19 38 12](https://github.com/user-attachments/assets/05ab0a48-123f-4ea1-8c55-1da648476220)
+<img width="200" height="398" alt="2026-07-24 13 23 04" src="https://github.com/user-attachments/assets/c72de93c-652d-49fd-b2e7-37cd584e1807" />
 
 Write your UI in real SwiftUI, compiled natively with the official Swift SDK for
 Android, and rendered by Jetpack Compose.
