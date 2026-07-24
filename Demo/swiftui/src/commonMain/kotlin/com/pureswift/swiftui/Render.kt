@@ -416,6 +416,8 @@ private fun RenderResolved(node: ViewNode) {
 
             "Stepper" -> RenderStepper(node)
 
+            "ContextMenu" -> RenderContextMenu(node)
+
             "Menu" -> RenderMenu(node)
 
             "DatePicker" -> RenderDatePicker(node)
@@ -892,6 +894,38 @@ private fun formatDateMillis(millis: Long): String {
     val format = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM)
     format.timeZone = java.util.TimeZone.getTimeZone("UTC")
     return format.format(java.util.Date(millis))
+}
+
+// Long-press the content to reveal a dropdown of the menu items. children are
+// [content..., menuItem...]; contentCount splits them.
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RenderContextMenu(node: ViewNode) {
+    val contentCount = node.long("contentCount")?.toInt() ?: 0
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Column(
+            modifier = node.composeModifiers().combinedClickable(
+                onClick = {},
+                onLongClick = { expanded = true },
+            )
+        ) {
+            node.children.take(contentCount).forEach { RenderChild(it) }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            for (child in node.children.drop(contentCount)) {
+                if (child.isPresentation()) continue
+                val onTap = child.long("onTap")
+                DropdownMenuItem(
+                    text = { Text(pickerLabel(child)) },
+                    onClick = {
+                        expanded = false
+                        onTap?.let { SwiftBridge.sink.invokeVoid(it) }
+                    },
+                )
+            }
+        }
+    }
 }
 
 // A trigger button opening a dropdown; each child Button becomes a menu item
