@@ -249,6 +249,39 @@ struct ModifierTests {
         #expect(changes == 0)
     }
 
+    @Test("Image distinguishes a system symbol from a named asset")
+    func imageNaming() {
+        let symbol = ViewHost(Image(systemName: "star.fill")).evaluate()
+        #expect(symbol.props["systemName"] == .string("star.fill"))
+        let asset = ViewHost(Image("sample_photo")).evaluate()
+        #expect(asset.props["name"] == .string("sample_photo"))
+        #expect(asset.props["systemName"] == nil)     // not a symbol lookup
+        #expect(asset.props["resizable"] == nil)      // opt-in only
+    }
+
+    @Test("resizable and a content mode travel together to the interpreter")
+    func imageResizable() {
+        let node = ViewHost(Image("sample_photo").resizable().scaledToFit()).evaluate()
+        #expect(node.props["resizable"] == .bool(true))
+        let mode = node.modifiers.first { $0.kind == "contentMode" }
+        #expect(mode?.args["mode"] == .string("fit"))
+        // scaledToFill and aspectRatio(contentMode:) select the other mode
+        let filled = ViewHost(Image("x").resizable().scaledToFill()).evaluate()
+        #expect(filled.modifiers.first { $0.kind == "contentMode" }?.args["mode"] == .string("fill"))
+        let ratio = ViewHost(Image("x").aspectRatio(contentMode: .fit)).evaluate()
+        #expect(ratio.modifiers.first { $0.kind == "contentMode" }?.args["mode"] == .string("fit"))
+    }
+
+    @Test("AsyncImage carries its URL, and a nil URL carries none")
+    func asyncImage() {
+        let node = ViewHost(AsyncImage(url: URL(string: "https://example.com/a.png"))).evaluate()
+        #expect(node.type == "AsyncImage")
+        #expect(node.props["url"] == .string("https://example.com/a.png"))
+        let empty = ViewHost(AsyncImage(url: nil)).evaluate()
+        #expect(empty.type == "AsyncImage")
+        #expect(empty.props["url"] == nil)
+    }
+
     @Test("onAppear and onDisappear emit distinct callback kinds")
     func appearDisappear() {
         let node = ViewHost(Text("x").onAppear {}.onDisappear {}).evaluate()

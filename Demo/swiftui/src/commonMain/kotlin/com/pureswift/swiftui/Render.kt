@@ -138,6 +138,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -336,6 +338,8 @@ private fun RenderResolved(node: ViewNode) {
             )
 
             "Image" -> RenderImage(node)
+
+            "AsyncImage" -> RenderAsyncImage(node)
 
             "Overlay" -> Box(
                 contentAlignment = zStackAlignment(node),
@@ -951,8 +955,58 @@ private fun RenderImage(node: ViewNode) {
             tint = tint ?: LocalContentColor.current,
             modifier = node.composeModifiers(),
         )
+        return
+    }
+    val asset = node.string("name")?.let { rememberAssetPainter(it) }
+    if (asset != null) {
+        androidx.compose.foundation.Image(
+            painter = asset,
+            contentDescription = node.string("name"),
+            contentScale = node.imageContentScale(),
+            modifier = node.composeModifiers(),
+        )
     } else {
         Text("[${node.string("name") ?: "image"}]", modifier = node.composeModifiers())
+    }
+}
+
+// resizable() unlocks scaling; the contentMode modifier then picks fit or fill.
+private fun ViewNode.imageContentScale(): ContentScale {
+    if (string("resizable") != "true") return ContentScale.Inside
+    return when (modifiers.firstOrNull { it.kind == "contentMode" }?.args?.string("mode")) {
+        "fit" -> ContentScale.Fit
+        "fill" -> ContentScale.Crop
+        else -> ContentScale.FillBounds   // bare resizable stretches, as in SwiftUI
+    }
+}
+
+// Fetch → decode → swap in, entirely Compose-side: a spinner while loading and
+// a labeled placeholder on failure. Keyed by URL so a new URL reloads.
+@Composable
+private fun RenderAsyncImage(node: ViewNode) {
+    val url = node.string("url")
+    if (url == null) {
+        Text("[image]", modifier = node.composeModifiers())
+        return
+    }
+    var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    var failed by remember(url) { mutableStateOf(false) }
+    LaunchedEffect(url) {
+        val loaded = loadRemoteImage(url)
+        if (loaded != null) bitmap = loaded else failed = true
+    }
+    val image = bitmap
+    when {
+        image != null -> androidx.compose.foundation.Image(
+            bitmap = image,
+            contentDescription = url,
+            contentScale = node.imageContentScale(),
+            modifier = node.composeModifiers(),
+        )
+        failed -> Text("[failed: $url]", modifier = node.composeModifiers())
+        else -> Box(contentAlignment = Alignment.Center, modifier = node.composeModifiers()) {
+            CircularProgressIndicator()
+        }
     }
 }
 
@@ -1231,7 +1285,7 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "scale", "opacity", "border", "shadow", "clipShape", "onTapGesture", "disabled",
     "font", "fontWeight", "italic", "foregroundColor", "lineLimit", "multilineTextAlignment",
     "tint", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
-    "transition", "focused", "longPress", "drag",
+    "transition", "focused", "longPress", "drag", "contentMode",
 )
 
 // Folds a frame entry: fixed size, fill (maxWidth/Height .infinity), bounded
