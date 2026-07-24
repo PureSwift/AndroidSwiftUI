@@ -305,6 +305,43 @@ struct ModifierTests {
         #expect(node.children.first?.type == "HStack")
     }
 
+    @Test("Label emits its icon then its title")
+    func label() {
+        let node = ViewHost(Label("Favorites", systemImage: "star.fill")).evaluate()
+        #expect(node.type == "Label")
+        #expect(node.children.count == 2)
+        // order matters: the interpreter shows/hides each half by position
+        #expect(node.children[0].type == "Image")
+        #expect(node.children[0].props["systemName"] == .string("star.fill"))
+        #expect(firstTextString(node.children[1]) == "Favorites")
+    }
+
+    @Test("Label takes an arbitrary title and icon")
+    func labelCustom() {
+        let node = ViewHost(
+            Label(title: { Text("Hi") }, icon: { Text("!") })
+        ).evaluate()
+        #expect(firstTextString(node.children[0]) == "!")     // icon slot
+        #expect(firstTextString(node.children[1]) == "Hi")    // title slot
+    }
+
+    @Test("labelStyle rides on the view, so it can be inherited")
+    func labelStyle() {
+        let node = ViewHost(
+            VStack {
+                Label("A", systemImage: "star")
+                Label("B", systemImage: "star")
+            }
+            .labelStyle(.iconOnly)
+        ).evaluate()
+        #expect(node.modifiers.first { $0.kind == "labelStyle" }?.args["style"] == .string("iconOnly"))
+        // the container carries it; the labels themselves carry none
+        for child in node.children {
+            #expect(child.type == "Label")
+            #expect(child.modifiers.first { $0.kind == "labelStyle" } == nil)
+        }
+    }
+
     @Test("onAppear and onDisappear emit distinct callback kinds")
     func appearDisappear() {
         let node = ViewHost(Text("x").onAppear {}.onDisappear {}).evaluate()
