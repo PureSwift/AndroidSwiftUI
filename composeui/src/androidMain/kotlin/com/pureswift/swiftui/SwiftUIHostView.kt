@@ -1,13 +1,17 @@
 package com.pureswift.swiftui
 
 import android.content.Context
+import android.app.Activity
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.core.view.WindowCompat
 import com.pureswift.bridge.BridgeExport
 import com.pureswift.swiftandroid.AndroidBridgeHost
 
@@ -25,9 +29,20 @@ class SwiftUIHostView(context: Context) : FrameLayout(context) {
         BridgeExport.bridgeSetHost(AndroidBridgeHost())
         val composeView = ComposeView(context)
         composeView.setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.safeDrawingPadding()) {
-                    store.root?.let { Render(it) }
+            val root = store.root
+            SwiftUITheme(root) {
+                val dark = LocalDarkTheme.current
+                SideEffect {
+                    (context as? Activity)?.window?.let { window ->
+                        val controller = WindowCompat.getInsetsController(window, composeView)
+                        controller.isAppearanceLightStatusBars = !dark
+                        controller.isAppearanceLightNavigationBars = !dark
+                    }
+                }
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.safeDrawingPadding()) {
+                        root?.let { Render(it) }
+                    }
                 }
             }
         }

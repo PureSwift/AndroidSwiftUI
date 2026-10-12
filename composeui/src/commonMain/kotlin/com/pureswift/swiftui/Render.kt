@@ -1727,7 +1727,7 @@ private val KNOWN_MODIFIER_KINDS = setOf(
     "padding", "frame", "background", "cornerRadius", "offset", "rotation",
     "scale", "opacity", "border", "shadow", "clipShape", "onTapGesture", "disabled",
     "font", "fontWeight", "italic", "foregroundColor", "lineLimit", "multilineTextAlignment",
-    "tint", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
+    "tint", "preferredColorScheme", "onAppear", "onDisappear", "task", "onChange", "animation", "tag", "tabItem",
     "transition", "focused", "longPress", "drag", "contentMode", "progressViewStyle",
     "buttonStyle", "pickerStyle", "toggleStyle", "textFieldStyle",
     "accessibilityLabel", "accessibilityValue", "accessibilityHidden",
@@ -1974,7 +1974,7 @@ private fun RenderSheetsAndAlerts(screen: ViewNode?) {
     if (screen == null) return
     for (child in screen.children) {
         when (child.type) {
-            "Sheet" -> {
+            "Sheet" -> SwiftUITheme(child, systemDarkTheme = LocalDarkTheme.current) {
                 val onDismiss = child.long("onDismiss")
                 // Detents were emitted but never read, so every sheet wrapped its
                 // content and a "full-size" sheet came up as a short strip.
