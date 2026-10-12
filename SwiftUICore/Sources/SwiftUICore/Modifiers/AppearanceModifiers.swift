@@ -97,3 +97,26 @@ public extension View {
         modifier(_TintModifier(color: color))
     }
 }
+
+// MARK: - Preferred color scheme
+
+public enum ColorScheme: String, Equatable, Sendable {
+    case light, dark
+}
+
+public struct _PreferredColorSchemeModifier: RenderModifier {
+    let colorScheme: ColorScheme?
+    public var _modifierNode: ModifierNode {
+        ModifierNode(kind: "preferredColorScheme", args: colorScheme.map {
+            ["colorScheme": .string($0.rawValue)]
+        } ?? [:])
+    }
+}
+
+public extension View {
+    /// Requests a light or dark palette for the enclosing presentation.
+    /// Passing nil leaves the choice to an ancestor or the system.
+    func preferredColorScheme(_ colorScheme: ColorScheme?) -> ModifiedContent<Self, _PreferredColorSchemeModifier> {
+        modifier(_PreferredColorSchemeModifier(colorScheme: colorScheme))
+    }
+}

@@ -18,6 +18,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.pureswift.swiftui.Render
 import com.pureswift.swiftui.TreeStore
+import com.pureswift.swiftui.SwiftUITheme
 
 /// Fixture trees mirroring the Swift core's emitted schema — the wire-format
 /// contract exercised from the Kotlin side. R4 replaces fixtures with live
@@ -91,7 +92,11 @@ private fun LiveContent() {
             SwiftRuntime().start(it)
         }
     }
-    store.root?.let { Render(it) }
+    SwiftUITheme(store.root) {
+        Surface {
+            store.root?.let { Render(it) }
+        }
+    }
 }
 
 @Composable

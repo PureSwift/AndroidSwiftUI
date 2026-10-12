@@ -29,6 +29,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
+            implementation(libs.androidx.core.ktx)
             // VideoPlayer: the legacy MediaPlayer stack is unreliable for
             // remote streams, so the Android player is Media3.
             implementation("androidx.media3:media3-exoplayer:1.4.1")
