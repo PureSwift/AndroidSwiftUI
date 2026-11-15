@@ -159,6 +159,14 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.window.Popup
@@ -446,6 +454,15 @@ private fun RenderResolved(node: ViewNode) {
             "LazyVGrid" -> RenderGrid(node, vertical = true)
 
             "LazyHGrid" -> RenderGrid(node, vertical = false)
+
+            "Grid" -> RenderAppleGrid(node)
+
+            // A GridRow outside a Grid lays its cells out as a row.
+            "GridRow" -> Row(modifier = node.composeModifiers(), verticalAlignment = Alignment.CenterVertically) {
+                node.children.forEach { RenderChild(it) }
+            }
+
+            "SwipeActions" -> RenderSwipeActions(node)
 
             "EmptyView" -> Unit
 
@@ -941,12 +958,39 @@ private fun RenderPopover(node: ViewNode) {
 private fun RenderContextMenu(node: ViewNode) {
     val contentCount = node.long("contentCount")?.toInt() ?: 0
     var expanded by remember { mutableStateOf(false) }
+    val items = node.children.drop(contentCount).filter { !it.isPresentation() && it.long("onTap") != null }
+    val longPress = LocalViewConfiguration.current.longPressTimeoutMillis
     Box {
+        // The long press is watched in the initial pass, without consuming,
+        // so taps still reach the content and the menu adds no clickable
+        // node: TalkBack stops on the content once, and offers the items as
+        // its actions.
         Column(
-            modifier = node.composeModifiers().combinedClickable(
-                onClick = {},
-                onLongClick = { expanded = true },
-            )
+            modifier = node.composeModifiers()
+                .pointerInput(longPress) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        val released = withTimeoutOrNull(longPress) {
+                            waitForUpOrCancellation(PointerEventPass.Initial)
+                        }
+                        if (released == null) {
+                            expanded = true
+                            // The rest of the gesture is the menu's, not the content's.
+                            do {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                event.changes.forEach { it.consume() }
+                            } while (event.changes.any { it.pressed })
+                        }
+                    }
+                }
+                .semantics {
+                    customActions = items.map { item ->
+                        CustomAccessibilityAction(pickerLabel(item)) {
+                            item.long("onTap")?.let { SwiftBridge.sink.invokeVoid(it) }
+                            true
+                        }
+                    }
+                }
         ) {
             node.children.take(contentCount).forEach { RenderChild(it) }
         }
@@ -1343,12 +1387,17 @@ private fun RenderGradient(node: ViewNode) {
 @Composable
 private fun RenderImage(node: ViewNode) {
     val icon = node.string("systemName")?.let { materialIcon(it) }
+    // What TalkBack says: an accessibilityLabel modifier says it already;
+    // otherwise the `label` prop, for a name that isn't the one to say (a
+    // host's resource name), then the name.
+    val labeled = node.modifiers.any { it.kind == "accessibilityLabel" }
+    val description = if (labeled) null else node.string("label") ?: node.string("systemName") ?: node.string("name")
     if (icon != null) {
         val tint = node.modifiers.firstOrNull { it.kind == "foregroundColor" }
             ?.args?.long("color")?.let { Color(it.toInt()) }
         Icon(
             imageVector = icon,
-            contentDescription = node.string("systemName"),
+            contentDescription = description,
             tint = tint ?: LocalContentColor.current,
             modifier = node.composeModifiers(),
         )
@@ -1358,7 +1407,7 @@ private fun RenderImage(node: ViewNode) {
     if (asset != null) {
         androidx.compose.foundation.Image(
             painter = asset,
-            contentDescription = node.string("name"),
+            contentDescription = description,
             contentScale = node.imageContentScale(),
             modifier = node.composeModifiers(),
         )
