@@ -1,5 +1,6 @@
 package com.pureswift.swiftui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -56,13 +57,17 @@ object ComposableRegistry {
         val name = node.string("name") ?: return
         val factory = factories[name]
         if (factory != null) {
-            factory(Props(node.props)) {
-                // RenderChild, not the public Render: a nested call to a public
-                // composable from this dynamically-invoked factory slot has its
-                // restart group skipped by the runtime and silently renders
-                // nothing.
-                for (child in node.children) {
-                    RenderChild(child)
+            // The node's modifiers (padding, frame, background…) wrap the
+            // registered view, as they wrap any built-in one.
+            Box(modifier = node.composeModifiers()) {
+                factory(Props(node.props)) {
+                    // RenderChild, not the public Render: a nested call to a public
+                    // composable from this dynamically-invoked factory slot has its
+                    // restart group skipped by the runtime and silently renders
+                    // nothing.
+                    for (child in node.children) {
+                        RenderChild(child)
+                    }
                 }
             }
         } else {
