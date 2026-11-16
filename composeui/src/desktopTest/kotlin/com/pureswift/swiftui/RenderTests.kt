@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import kotlinx.serialization.json.Json
 import org.junit.Rule
 import org.junit.Test
@@ -44,6 +45,23 @@ class RenderTests {
         }
         compose.onNodeWithText("A").assertIsDisplayed()
         compose.onNodeWithText("B").assertIsDisplayed()
+    }
+
+    @Test
+    fun aTextFieldWithoutASubmitLabelStillSubmits() {
+        val invoked = mutableListOf<Long>()
+        SwiftBridge.sink = object : CallbackSink {
+            override fun invokeVoid(id: Long) { invoked += id }
+            override fun invokeBool(id: Long, value: Boolean) {}
+            override fun invokeDouble(id: Long, value: Double) {}
+            override fun invokeInt(id: Long, value: Int) {}
+            override fun invokeString(id: Long, value: String) {}
+        }
+        compose.setContent {
+            Render(node("""{"type":"TextField","id":"f","props":{"text":"swift.org","placeholder":"Address"},"modifiers":[{"kind":"onSubmit","args":{"action":7}}]}"""))
+        }
+        compose.onNodeWithText("swift.org").performImeAction()
+        assertEquals(listOf(7L), invoked)
     }
 
     @Test
