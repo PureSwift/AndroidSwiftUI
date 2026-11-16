@@ -31,7 +31,7 @@ class SwiftUIHostView(context: Context) : FrameLayout(context) {
         composeView.setContent {
             val root = store.root
             SwiftUITheme(root) {
-                val dark = LocalDarkTheme.current
+                val dark = LocalDarkTheme.current == true
                 SideEffect {
                     (context as? Activity)?.window?.let { window ->
                         val controller = WindowCompat.getInsetsController(window, composeView)
