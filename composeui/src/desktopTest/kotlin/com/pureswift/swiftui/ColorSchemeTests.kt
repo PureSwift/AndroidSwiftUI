@@ -2,6 +2,8 @@ package com.pureswift.swiftui
 
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,5 +79,66 @@ class ColorSchemeTests {
         compose.runOnIdle { assertTrue(surface.luminance() < foreground.luminance()); root = null }
         compose.runOnIdle { assertTrue(surface.luminance() > foreground.luminance()) }
         compose.onNodeWithTag("input").assertTextEquals("keep this draft")
+    }
+
+    // A screen presenting a sheet, each with a probe that records the
+    // palette it renders in. `screen` and `sheet` are extra modifiers.
+    private var screenSurface = Color.Unspecified
+    private var sheetSurface = Color.Unspecified
+
+    private fun presenting(screen: String = "", sheet: String = ""): ViewNode {
+        ComposableRegistry.register("probe.screen") { _, _ -> screenSurface = MaterialTheme.colorScheme.surface }
+        ComposableRegistry.register("probe.sheet") { _, _ -> sheetSurface = MaterialTheme.colorScheme.surface }
+        return node("""
+            {"type":"NavStack","id":"nav","props":{"titles":["Home"]},"children":[
+              {"type":"VStack","id":"screen","modifiers":[$screen],"children":[
+                {"type":"Composable","id":"a","props":{"name":"probe.screen"}},
+                {"type":"Sheet","id":"sheet","children":[
+                  {"type":"Composable","id":"b","props":{"name":"probe.sheet"},"modifiers":[$sheet]}
+                ]}
+              ]}
+            ]}
+        """)
+    }
+
+    private fun scheme(name: String) = """{"kind":"preferredColorScheme","args":{"colorScheme":"$name"}}"""
+
+    @Test fun aSheetKeepsTheHostsOwnPaletteWithoutSwiftUITheme() {
+        // A host that themes itself, dark, with colors of its own.
+        val brand = Color(0xFF102030)
+        val tree = presenting()
+        compose.setContent {
+            MaterialTheme(colorScheme = darkColorScheme(surface = brand)) { Render(tree) }
+        }
+        compose.waitForIdle()
+        assertEquals(brand, screenSurface)
+        assertEquals(brand, sheetSurface, "the sheet keeps the presenting palette")
+    }
+
+    @Test fun aSheetThatPrefersTheOtherSchemeGetsIt() {
+        val tree = presenting(sheet = scheme("dark"))
+        compose.setContent {
+            MaterialTheme(colorScheme = lightColorScheme()) { Render(tree) }
+        }
+        compose.waitForIdle()
+        assertTrue(screenSurface.luminance() > 0.5f, "the screen stays light")
+        assertTrue(sheetSurface.luminance() < 0.5f, "the sheet is dark")
+    }
+
+    @Test fun underSwiftUIThemeASheetFollowsThePresentingScreen() {
+        // The system is dark, the screen prefers light: a sheet without a
+        // preference is light too, and one that prefers dark is dark.
+        val light = presenting(screen = scheme("light"))
+        var root by mutableStateOf(light)
+        compose.setContent {
+            SwiftUITheme(root, systemDarkTheme = true) { Render(root) }
+        }
+        compose.waitForIdle()
+        assertTrue(screenSurface.luminance() > 0.5f)
+        assertTrue(sheetSurface.luminance() > 0.5f, "the sheet follows the screen")
+        root = presenting(screen = scheme("light"), sheet = scheme("dark"))
+        compose.waitForIdle()
+        assertTrue(screenSurface.luminance() > 0.5f)
+        assertTrue(sheetSurface.luminance() < 0.5f, "the sheet's own preference wins")
     }
 }
