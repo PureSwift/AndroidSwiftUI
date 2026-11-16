@@ -8,8 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.luminance
 
-internal val LocalDarkTheme = compositionLocalOf { false }
+/// Whether the palette `SwiftUITheme` resolved is dark; null in a host that
+/// sets its own `MaterialTheme` and calls `Render` without `SwiftUITheme`.
+internal val LocalDarkTheme = compositionLocalOf<Boolean?> { null }
 
 // Preferences affect the enclosing presentation, not just the modified node.
 // An ancestor takes precedence; sheets collect their own preferences.
@@ -51,6 +54,29 @@ fun SwiftUITheme(
     val preferred = remember(root) { root?.preferredDarkTheme() }
     val dark = preferred ?: systemDarkTheme
     MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
+        CompositionLocalProvider(LocalDarkTheme provides dark, content = content)
+    }
+}
+
+/// A sheet's palette: the presenting screen's, unless the sheet prefers the
+/// other scheme. The presenting palette is kept as it is, so a host's own
+/// colors (dynamic color, a brand palette) reach its sheets; only a sheet
+/// that asks for the other scheme gets the baseline Material palette for it.
+/// Like `SwiftUITheme`, the composition's structure stays the same whatever
+/// the preference, so remembered state inside the sheet survives a switch.
+@Composable
+internal fun SheetTheme(sheet: ViewNode, content: @Composable () -> Unit) {
+    val preferred = remember(sheet) { sheet.preferredDarkTheme() }
+    val inherited = MaterialTheme.colorScheme
+    // A host without SwiftUITheme says nothing: judge its palette by its surface.
+    val presentingDark = LocalDarkTheme.current ?: (inherited.surface.luminance() < 0.5f)
+    val dark = preferred ?: presentingDark
+    val colors = when {
+        dark == presentingDark -> inherited
+        dark -> darkColorScheme()
+        else -> lightColorScheme()
+    }
+    MaterialTheme(colorScheme = colors) {
         CompositionLocalProvider(LocalDarkTheme provides dark, content = content)
     }
 }
