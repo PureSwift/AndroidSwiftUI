@@ -2046,7 +2046,7 @@ private fun RenderSheetsAndAlerts(screen: ViewNode?) {
     if (screen == null) return
     for (child in screen.children) {
         when (child.type) {
-            "Sheet" -> SwiftUITheme(child, systemDarkTheme = LocalDarkTheme.current) {
+            "Sheet" -> SheetTheme(child) {
                 val onDismiss = child.long("onDismiss")
                 // Detents were emitted but never read, so every sheet wrapped its
                 // content and a "full-size" sheet came up as a short strip.
