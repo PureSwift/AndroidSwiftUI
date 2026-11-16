@@ -7,9 +7,26 @@ import SwiftUI
 #endif
 
 struct AppearancePlayground: View {
+    @State private var appearance = "system"
+
+    private var colorScheme: ColorScheme? {
+        switch appearance {
+        case "light": .light
+        case "dark": .dark
+        default: nil
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                Example("Color scheme") {
+                    Picker("Appearance", selection: $appearance) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                    }
+                }
                 Example("Border") {
                     Text("Bordered")
                         .padding()
@@ -53,6 +70,7 @@ struct AppearancePlayground: View {
                 }
             }
         }
+        .preferredColorScheme(colorScheme)
     }
 }
 

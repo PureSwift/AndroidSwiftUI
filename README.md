@@ -109,6 +109,20 @@ swift build --product SwiftUIDesktopDemo
 JAVA_HOME="…/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :demo-desktop:run
 ```
 
+## Color schemes
+
+The Android host follows the system light/dark setting. Use
+`.preferredColorScheme(.dark)` or `.preferredColorScheme(.light)` on a view to
+request a palette for its enclosing presentation; pass `nil` to follow the
+ancestor preference or the system again. The active navigation screen and
+selected tab participate in preference resolution. A sheet can request its own
+scheme without changing the presenting window.
+
+Custom Compose hosts can wrap their root in `SwiftUITheme(root)`. Theme changes
+keep the composition structure stable, preserving remembered input state.
+This API controls the Material palette; `@Environment(\.colorScheme)` and
+preferences inside deferred lazy rows are not yet supported.
+
 ## Tests
 
 `SwiftUICore` is fully host-testable — evaluator, identity/state semantics, and
