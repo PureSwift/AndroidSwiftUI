@@ -1,6 +1,13 @@
 package com.pureswift.swiftui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -61,6 +68,32 @@ class AppleLayoutsTests {
         assertEquals(b.left, d.left, "the second column starts after the widest first cell")
         assertEquals(c.right + 10.dp, d.left)
         assertEquals(a.bottom + 4.dp, c.top)
+    }
+
+    @Test
+    fun aFlexibleViewTakesTheSpaceItsSiblingsLeave() {
+        ComposableRegistry.register("test.Fills") { _, _ ->
+            Box(Modifier.fillMaxSize().testTag("fills"))
+        }
+        fun stack(frame: String) = """
+            {"type":"VStack","id":"s","props":{"spacing":0.0},"modifiers":[{"kind":"frame","args":{"height":300.0}}],"children":[
+              ${text("a", "Above", "above")},
+              {"type":"Composable","id":"f","props":{"name":"test.Fills","flexible":true}$frame},
+              ${text("b", "Below", "below")}
+            ]}
+        """.trimIndent()
+        var json by mutableStateOf(stack(""))
+        compose.setContent { Render(node(json)) }
+        val above = compose.onNodeWithTag("above").getUnclippedBoundsInRoot()
+        val fills = compose.onNodeWithTag("fills").getUnclippedBoundsInRoot()
+        val below = compose.onNodeWithTag("below").getUnclippedBoundsInRoot()
+        assertEquals(above.bottom, fills.top)
+        assertEquals(fills.bottom, below.top, "the text after it still shows")
+        assertEquals(300.dp, below.bottom, "it takes the rest of the stack")
+        // A fixed height wins.
+        json = stack(""","modifiers":[{"kind":"frame","args":{"height":50.0}}]""")
+        compose.waitForIdle()
+        assertEquals(50.dp, compose.onNodeWithTag("fills").getUnclippedBoundsInRoot().let { it.bottom - it.top })
     }
 
     @Test

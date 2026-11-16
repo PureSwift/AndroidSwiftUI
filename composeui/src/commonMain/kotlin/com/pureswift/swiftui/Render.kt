@@ -757,18 +757,19 @@ private fun RenderTextField(node: ViewNode) {
         "URL" -> KeyboardType.Uri
         else -> KeyboardType.Text
     }
+    // .onSubmit fires on the keyboard action key, whatever its label.
+    val onSubmit = node.modifiers.firstOrNull { it.kind == "onSubmit" }?.args?.long("action")
     val imeAction = when (node.modifiers.firstOrNull { it.kind == "submitLabel" }?.args?.string("label")) {
         "search", "webSearch" -> ImeAction.Search
         "go", "route" -> ImeAction.Go
         "send" -> ImeAction.Send
         "next" -> ImeAction.Next
         "join", "continue", "return" -> ImeAction.Done
-        else -> ImeAction.Default
+        // No KeyboardActions callback hears Default, so a field that submits
+        // asks for Done, as SwiftUI's return key submits.
+        else -> if (onSubmit != null) ImeAction.Done else ImeAction.Default
     }
     val keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction)
-
-    // .onSubmit fires on the keyboard action key, whatever its label.
-    val onSubmit = node.modifiers.firstOrNull { it.kind == "onSubmit" }?.args?.long("action")
     val keyboardActions = KeyboardActions(
         onDone = { onSubmit?.let { SwiftBridge.sink.invokeVoid(it) } },
         onGo = { onSubmit?.let { SwiftBridge.sink.invokeVoid(it) } },
@@ -1105,7 +1106,19 @@ private fun pickerLabel(node: ViewNode): String {
 }
 
 // `Modifier.weight` only exists inside RowScope/ColumnScope, so stacks render
-// their children through scope-aware loops that give Spacer its expansion.
+// their children through scope-aware loops that give Spacer its expansion,
+// and flexible views theirs.
+
+/**
+ * Whether a stack's child takes the space its siblings leave along the
+ * stack's axis, as a SwiftUI view that fills what it's offered does (a web
+ * view, a GL surface) and Compose's `fillMaxSize` can't: the child says so
+ * with a `flexible` prop. A fixed frame on that axis sizes it instead. In a
+ * scroll view, whose axis is unbounded, it gets no space: give it a frame.
+ */
+internal fun ViewNode.fillsStack(vertical: Boolean): Boolean =
+    bool("flexible") == true &&
+        modifiers.none { it.kind == "frame" && it.args.double(if (vertical) "height" else "width") != null }
 
 @Composable
 private fun ColumnScope.RenderColumnChildren(node: ViewNode) {
@@ -1115,6 +1128,11 @@ private fun ColumnScope.RenderColumnChildren(node: ViewNode) {
         key(child.id) {
             when {
                 child.type == "Spacer" -> Spacer(modifier = Modifier.weight(1f))
+                child.fillsStack(vertical = true) -> if (slot != null) {
+                    AnimatedVisibility(slot.state, modifier = Modifier.weight(1f), enter = enterFor(child, spec), exit = exitFor(child, spec)) { Render(child) }
+                } else {
+                    Box(modifier = Modifier.weight(1f)) { Render(child) }
+                }
                 slot != null -> AnimatedVisibility(slot.state, enter = enterFor(child, spec), exit = exitFor(child, spec)) { Render(child) }
                 else -> Render(child)
             }
@@ -1130,6 +1148,11 @@ private fun RowScope.RenderRowChildren(node: ViewNode) {
         key(child.id) {
             when {
                 child.type == "Spacer" -> Spacer(modifier = Modifier.weight(1f))
+                child.fillsStack(vertical = false) -> if (slot != null) {
+                    AnimatedVisibility(slot.state, modifier = Modifier.weight(1f), enter = enterFor(child, spec), exit = exitFor(child, spec)) { Render(child) }
+                } else {
+                    Box(modifier = Modifier.weight(1f)) { Render(child) }
+                }
                 slot != null -> AnimatedVisibility(slot.state, enter = enterFor(child, spec), exit = exitFor(child, spec)) { Render(child) }
                 else -> Render(child)
             }
