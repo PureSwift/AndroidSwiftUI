@@ -757,18 +757,19 @@ private fun RenderTextField(node: ViewNode) {
         "URL" -> KeyboardType.Uri
         else -> KeyboardType.Text
     }
+    // .onSubmit fires on the keyboard action key, whatever its label.
+    val onSubmit = node.modifiers.firstOrNull { it.kind == "onSubmit" }?.args?.long("action")
     val imeAction = when (node.modifiers.firstOrNull { it.kind == "submitLabel" }?.args?.string("label")) {
         "search", "webSearch" -> ImeAction.Search
         "go", "route" -> ImeAction.Go
         "send" -> ImeAction.Send
         "next" -> ImeAction.Next
         "join", "continue", "return" -> ImeAction.Done
-        else -> ImeAction.Default
+        // No KeyboardActions callback hears Default, so a field that submits
+        // asks for Done, as SwiftUI's return key submits.
+        else -> if (onSubmit != null) ImeAction.Done else ImeAction.Default
     }
     val keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction)
-
-    // .onSubmit fires on the keyboard action key, whatever its label.
-    val onSubmit = node.modifiers.firstOrNull { it.kind == "onSubmit" }?.args?.long("action")
     val keyboardActions = KeyboardActions(
         onDone = { onSubmit?.let { SwiftBridge.sink.invokeVoid(it) } },
         onGo = { onSubmit?.let { SwiftBridge.sink.invokeVoid(it) } },
